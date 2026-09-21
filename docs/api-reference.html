@@ -1,0 +1,1830 @@
+<title>HealthEMR API Reference</title>
+<style>
+  :root {
+    --ink: #22303E;
+    --body: #4B4B5A;
+    --muted: #6E6B7B;
+    --faint: #9A97A8;
+    --primary: #115FAA;
+    --primary-soft: #E7F0F9;
+    --ground: #F0F5FA;
+    --card: #FFFFFF;
+    --line: #E4E6EB;
+    --line-soft: #EFF0F3;
+    --get: #00A1B5;
+    --post: #03A87C;
+    --patch: #D9700F;
+    --delete: #E01F32;
+    --radius: 0.357rem;
+    --sans: "Segoe UI", Inter, Roboto, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --display: "Avenir Next", "Segoe UI", Futura, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  :root:not([data-theme="light"]) {
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #EAECEF;
+      --body: #C6C9D1;
+      --muted: #9AA0AC;
+      --faint: #757C8A;
+      --primary: #5FA8E8;
+      --primary-soft: #16334F;
+      --ground: #0F1620;
+      --card: #16202C;
+      --line: #25313F;
+      --line-soft: #1D2734;
+      --get: #3FC7D6;
+      --post: #3FCB9E;
+      --patch: #E8A24A;
+      --delete: #F16173;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #EAECEF;
+    --body: #C6C9D1;
+    --muted: #9AA0AC;
+    --faint: #757C8A;
+    --primary: #5FA8E8;
+    --primary-soft: #16334F;
+    --ground: #0F1620;
+    --card: #16202C;
+    --line: #25313F;
+    --line-soft: #1D2734;
+    --get: #3FC7D6;
+    --post: #3FCB9E;
+    --patch: #E8A24A;
+    --delete: #F16173;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--body);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, pre { font-family: var(--mono); }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem 5rem; }
+
+  header.masthead {
+    padding: 3.5rem 0 2rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--primary); font-weight: 600; margin: 0 0 0.6rem;
+  }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    line-height: 1.15; margin: 0 0 0.75rem; color: var(--ink);
+    letter-spacing: -0.015em; text-wrap: balance;
+  }
+  .lede { max-width: 62ch; margin: 0; color: var(--muted); font-size: 1.02rem; }
+  .facts { display: flex; flex-wrap: wrap; gap: 1.75rem; margin-top: 1.75rem; }
+  .fact b {
+    display: block; font-family: var(--display); font-size: 1.5rem;
+    color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.2;
+  }
+  .fact span { font-size: 0.78rem; color: var(--faint); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .layout { display: grid; grid-template-columns: 15rem 1fr; gap: 2.5rem; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } nav.toc { position: static; } }
+
+  nav.toc { position: sticky; top: 1.5rem; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; }
+  nav.toc a {
+    display: block; padding: 0.4rem 0.7rem; border-radius: var(--radius);
+    color: var(--muted); text-decoration: none; font-size: 0.88rem;
+  }
+  nav.toc a:hover { background: var(--primary-soft); color: var(--primary); }
+  nav.toc .count { float: right; color: var(--faint); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+
+  .filter {
+    width: 100%; padding: 0.6rem 0.9rem; margin-bottom: 1.25rem;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card); color: var(--ink); font: inherit; font-size: 0.9rem;
+  }
+  .filter:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+  section.group { margin-bottom: 2.75rem; scroll-margin-top: 1.5rem; }
+  section.group > h2 {
+    font-family: var(--display); font-size: 1.3rem; color: var(--ink);
+    margin: 0 0 0.35rem; letter-spacing: -0.01em;
+  }
+  .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0 0 0.6rem; font-size: 0.8rem; color: var(--faint); }
+  .meta b { color: var(--muted); font-weight: 600; }
+  .group-blurb { margin: 0 0 1rem; color: var(--muted); max-width: 70ch; font-size: 0.92rem; }
+
+  details.op {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: 0 2px 6px rgba(34,48,62,0.05); margin-bottom: 0.4rem;
+    overflow: hidden;
+  }
+  details.op[open] { box-shadow: 0 4px 16px rgba(34,48,62,0.09); }
+  details.op summary {
+    display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap;
+    padding: 0.7rem 0.95rem; cursor: pointer; list-style: none;
+  }
+  details.op summary::-webkit-details-marker { display: none; }
+  details.op summary:hover { background: var(--primary-soft); }
+  .verb {
+    font-family: var(--mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 0.18rem 0.45rem; border-radius: 3px; color: #fff; flex: none; min-width: 3.9rem; text-align: center;
+  }
+  .verb.get { background: var(--get); }
+  .verb.post { background: var(--post); }
+  .verb.put, .verb.patch { background: var(--patch); }
+  .verb.delete { background: var(--delete); }
+  .path { font-size: 0.86rem; color: var(--ink); word-break: break-all; }
+  .summary { color: var(--muted); font-size: 0.85rem; margin-left: auto; text-align: right; }
+  @media (max-width: 620px) { .summary { margin-left: 0; text-align: left; width: 100%; } }
+
+  .body { padding: 0.25rem 0.95rem 1rem; border-top: 1px solid var(--line-soft); }
+  .desc { margin: 0.8rem 0; max-width: 72ch; }
+  .muted { color: var(--muted); }
+
+  pre {
+    background: var(--ground); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.85rem 1rem; overflow-x: auto; font-size: 0.8rem; line-height: 1.55; margin: 0.8rem 0;
+  }
+  code { font-size: 0.86em; }
+  .body > table + table { margin-top: 0.9rem; }
+
+  table.params { width: 100%; border-collapse: collapse; margin: 0.8rem 0; font-size: 0.85rem; display: block; overflow-x: auto; }
+  table.params thead th {
+    text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--faint); font-weight: 600; padding: 0 0.6rem 0.4rem 0; border-bottom: 1px solid var(--line);
+  }
+  table.params td { padding: 0.45rem 0.6rem 0.45rem 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  .req { margin-left: 0.4rem; font-size: 0.66rem; color: var(--delete); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .responses { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.9rem; }
+  .status {
+    font-size: 0.76rem; padding: 0.22rem 0.55rem; border-radius: var(--radius);
+    background: var(--ground); border: 1px solid var(--line); color: var(--muted);
+  }
+  .status b { font-family: var(--mono); color: var(--ink); }
+  .status.ok { border-color: color-mix(in srgb, var(--post) 40%, var(--line)); }
+  .status.warn { border-color: color-mix(in srgb, var(--patch) 40%, var(--line)); }
+  .status.err { border-color: color-mix(in srgb, var(--delete) 40%, var(--line)); }
+
+  .note {
+    background: var(--card); border-left: 3px solid var(--primary);
+    border-radius: var(--radius); padding: 0.9rem 1.1rem; margin: 0 0 2rem;
+    font-size: 0.9rem; color: var(--muted); max-width: 72ch;
+  }
+  .note b { color: var(--ink); }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: 0.82rem; color: var(--faint); }
+  .hidden { display: none !important; }
+</style>
+
+<div class="shell">
+  <header class="masthead">
+    <p class="eyebrow">HealthEMR</p>
+    <h1>API Reference</h1>
+    <p class="lede">
+      Every endpoint on the platform, grouped by who calls it. Generated from the running
+      server&rsquo;s OpenAPI document, so nothing here can drift from what the code actually does.
+    </p>
+    <div class="facts">
+      <div class="fact"><b>130</b><span>Endpoints</span></div>
+      <div class="fact"><b>10</b><span>Audiences</span></div>
+      <div class="fact"><b>v1.0</b><span>Version</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc">
+      <ol>
+        <li><a href="#partner">Partner API<span class="count">4</span></a></li><li><a href="#auth">Authentication<span class="count">6</span></a></li><li><a href="#public">Public<span class="count">7</span></a></li><li><a href="#super-admin">Platform owner<span class="count">69</span></a></li><li><a href="#admin">Client business<span class="count">9</span></a></li><li><a href="#clinic">Provider<span class="count">7</span></a></li><li><a href="#dispensary">Pharmacy<span class="count">16</span></a></li><li><a href="#portal">Patient<span class="count">3</span></a></li><li><a href="#shared">Shared<span class="count">7</span></a></li><li><a href="#ops">Operations<span class="count">2</span></a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <input class="filter" type="search" placeholder="Filter by path, method or summary…" aria-label="Filter endpoints" />
+
+      <p class="note">
+        <b>Authentication.</b> Console endpoints take a session bearer token from
+        <code>POST /v1/auth/login</code>. The partner API takes a tenant API key as
+        <code>Authorization: Bearer hemr_…</code> — never a user session. Every response carries an
+        <code>x-request-id</code>; quote it when reporting a problem.
+      </p>
+
+      <section class="group" id="partner">
+            <h2>Partner API</h2>
+            <p class="meta"><span><b>Called by</b> A client business’s server</span><span><b>Auth</b> Tenant API key (Bearer)</span><span><b>4</b> endpoints</span></p>
+            <p class="group-blurb">What a telehealth business integrates against. Shaped to match the incumbent’s contract, so a client already integrated elsewhere can repoint by changing a base URL and a token.</p>
+            <details class="op" data-search="get /partner/v1/pharmacies pharmacies this client may name">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/partner/v1/pharmacies</code>
+      <span class="summary">Pharmacies this client may name</span>
+    </summary>
+    <div class="body"><p class="desc">Every pharmacy on this client’s roster, with what each is able to dispense. The <code>pharmacyId</code> returned here is what goes on an intake.</p></div>
+  </details><details class="op" data-search="get /partner/v1/pharmacies/{pharmacyid}/medications what one pharmacy carries">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/partner/v1/pharmacies/{pharmacyId}/medications</code>
+      <span class="summary">What one pharmacy carries</span>
+    </summary>
+    <div class="body"><p class="desc">The list an order form should be built from. Each entry’s <code>kitId</code> is what goes in <code>patientPreference[].medId</code>. An intake naming a kit the pharmacy does not carry is refused, so offering anything outside this list produces a rejected visit.</p></div>
+  </details><details class="op" data-search="get /partner/v1/visit/{masterid} one visit">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/partner/v1/visit/{masterId}</code>
+      <span class="summary">One visit</span>
+    </summary>
+    <div class="body"><p class="desc">Status, the decision on each requested line, and the shipment once it exists. Scoped to the calling client, so another client’s visit is not found rather than forbidden.</p></div>
+  </details><details class="op" data-search="post /partner/v1/visit/createnopayphotos submit an intake and create a visit">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/partner/v1/visit/createNoPayPhotos</code>
+      <span class="summary">Submit an intake and create a visit</span>
+    </summary>
+    <div class="body"><p class="desc">The main integration point. Creates the patient if they are new, records the questionnaire, routes the visit to a clinician licensed in the patient’s state, and returns a visit id. Idempotent on <code>masterId</code> per tenant: a retried call is refused rather than creating a second visit.</p><pre><code>{
+  "masterId": "your-unique-id",
+  "company": "yourSlug",
+  "visitType": "weightloss",
+  "pharmacyId": "first-choice",
+  "formObj": {
+    "consentsSigned": true,
+    "firstName": "…", "lastName": "…",
+    "dob": "MM/DD/YYYY", "sex": "Female",
+    "phone": "5551234567", "email": "…",
+    "address": "…", "city": "…", "state": "TX", "zip": "73301",
+    "allergies": "…", "medicalConditions": "…", "selfReportedMeds": "…",
+    "Q1": "question", "A1": "answer",
+    "patientPreference": [
+      { "medId": "SEMA-2.5", "name": "…", "strength": "…",
+        "quantity": "1", "refills": "0" }
+    ]
+  }
+}</code></pre><table class="params"><thead><tr><th>Refused with</th><th></th></tr></thead><tbody><tr><td><code>No company found</code></td><td class="muted">The <code>company</code> does not match the tenant the API key belongs to.</td></tr><tr><td><code>Company does not have that visit type</code></td><td class="muted">That category is not enabled for this client.</td></tr><tr><td><code>Pharmacy mismatch in patientPreference</code></td><td class="muted">The named pharmacy is not on this client’s roster, or cannot dispense this product.</td></tr><tr><td><code><em>Pharmacy</em> does not stock <em>kit</em></code></td><td class="muted">The pharmacy does not carry that kit. Call the medications lookup below for what it does.</td></tr><tr><td><code>Branded med with compounding pharmacy</code></td><td class="muted">A branded product was sent to a compounding-only pharmacy.</td></tr><tr><td><code>State not valid</code></td><td class="muted">No contracted clinician is licensed in that state, or the client may not sell there.</td></tr><tr><td><code>Duplicate masterId</code></td><td class="muted">That <code>masterId</code> already exists for this client.</td></tr></tbody></table></div>
+  </details>
+          </section><section class="group" id="auth">
+            <h2>Authentication</h2>
+            <p class="meta"><span><b>Called by</b> Anyone signing in</span><span><b>Auth</b> None — these issue the session</span><span><b>6</b> endpoints</span></p>
+            <p class="group-blurb">Sign in, refresh, sign out, and claim an invited account by setting a password.</p>
+            <details class="op" data-search="post /v1/auth/accept-invite redeem an invitation and set a password">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/auth/accept-invite</code>
+      <span class="summary">Redeem an invitation and set a password</span>
+    </summary>
+    <div class="body"><p class="desc">Single use. Every failure — expired, already used, revoked, unknown — returns the same message, because telling someone holding a stolen link which it is would be a gift.</p><div class="responses"><span class="status ok"><b>200</b> Password set</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/auth/login exchange email and password for a token pair">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/auth/login</code>
+      <span class="summary">Exchange email and password for a token pair</span>
+    </summary>
+    <div class="body"><p class="desc">Access tokens are short-lived (15 minutes). Refresh tokens are opaque, single-use and rotated on every refresh, so a stolen one is usable at most once and its reuse surfaces as a revoked session.</p><div class="responses"><span class="status ok"><b>200</b> Signed in</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/auth/logout revoke a refresh session">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/auth/logout</code>
+      <span class="summary">Revoke a refresh session</span>
+    </summary>
+    <div class="body"><p class="desc">Idempotent, and returns 204 even for an unknown token so it cannot be used as an oracle.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/auth/me the signed-in user">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/auth/me</code>
+      <span class="summary">The signed-in user</span>
+    </summary>
+    <div class="body"><p class="desc">Read from the database on every call, not from the token, so a deactivated account or a changed role takes effect immediately rather than at the next refresh.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/auth/profile my own record">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/auth/profile</code>
+      <span class="summary">My own record</span>
+    </summary>
+    <div class="body"><p class="desc">What the platform holds about the signed-in person. Separate from /me, which is the identity the rest of the app runs on and is kept deliberately small.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/auth/refresh rotate a refresh token for a new pair">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/auth/refresh</code>
+      <span class="summary">Rotate a refresh token for a new pair</span>
+    </summary>
+    <div class="body"><p class="desc">The presented token is revoked in the same transaction that issues its replacement.</p><div class="responses"><span class="status ok"><b>200</b> New token pair</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details>
+          </section><section class="group" id="public">
+            <h2>Public</h2>
+            <p class="meta"><span><b>Called by</b> Applicants, with no account</span><span><b>Auth</b> None (rate limited)</span><span><b>7</b> endpoints</span></p>
+            <p class="group-blurb">The pharmacy and provider application forms, and the documents each applicant must supply.</p>
+            <details class="op" data-search="get /v1/public/onboarding/categories treatment areas a clinician can offer">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/public/onboarding/categories</code>
+      <span class="summary">Treatment areas a clinician can offer</span>
+    </summary>
+    <div class="body"><p class="desc">For the multi-select on the application form. Public, like the rest of the form — an applicant has no account yet, and the list of things this platform treats is not a secret.</p><div class="responses"><span class="status ok"><b>200</b> Success</span></div></div>
+  </details><details class="op" data-search="get /v1/public/onboarding/documents/pharmacy document checklist for the pharmacy form">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/public/onboarding/documents/pharmacy</code>
+      <span class="summary">Document checklist for the pharmacy form</span>
+    </summary>
+    <div class="body"><p class="desc">Every document kind with a human label. Which are mandatory depends on the applicant and is returned with the submission receipt.</p><div class="responses"><span class="status ok"><b>200</b> Success</span></div></div>
+  </details><details class="op" data-search="get /v1/public/onboarding/documents/provider document checklist for the provider form">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/public/onboarding/documents/provider</code>
+      <span class="summary">Document checklist for the provider form</span>
+    </summary>
+    <div class="body"><p class="desc">Every document kind with a human label, for rendering the upload list.</p><div class="responses"><span class="status ok"><b>200</b> Success</span></div></div>
+  </details><details class="op" data-search="post /v1/public/onboarding/pharmacy apply as a pharmacy">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/public/onboarding/pharmacy</code>
+      <span class="summary">Apply as a pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">Returns the application id and the documents required for this applicant, which depend on whether they compound, operate as a 503B outsourcing facility, and which states they ship into.</p><div class="responses"><span class="status ok"><b>200</b> Application received</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/public/onboarding/pharmacy/{id}/documents attach a document to a pharmacy application">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/public/onboarding/pharmacy/{id}/documents</code>
+      <span class="summary">Attach a document to a pharmacy application</span>
+    </summary>
+    <div class="body"><p class="desc">PDF, PNG or JPEG up to 15MB. Contents are checked against the extension, so a file merely named .pdf is rejected. The application id acts as the credential — an applicant has no account yet — so it is unguessable, rate limited, write-only, and refused once a decision has been made.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Application id from the submission receipt</td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/public/onboarding/provider apply as a provider">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/public/onboarding/provider</code>
+      <span class="summary">Apply as a provider</span>
+    </summary>
+    <div class="body"><p class="desc">State licences are required and drive routing once approved: a request is only ever offered to a provider holding a current licence in the state the patient was in at submission.</p><div class="responses"><span class="status ok"><b>200</b> Application received</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/public/onboarding/provider/{id}/documents attach a document to a provider application">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/public/onboarding/provider/{id}/documents</code>
+      <span class="summary">Attach a document to a provider application</span>
+    </summary>
+    <div class="body"><p class="desc">Send <code>state</code> alongside a STATE_MEDICAL_LICENSE so accepting it verifies that state licence — which is what lets routing trust it.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details>
+          </section><section class="group" id="super-admin">
+            <h2>Platform owner</h2>
+            <p class="meta"><span><b>Called by</b> SUPER_ADMIN</span><span><b>Auth</b> Session (Bearer)</span><span><b>69</b> endpoints</span></p>
+            <p class="group-blurb">The console: client accounts, applications, the provider and pharmacy directories, patients, prescriptions, billing, reports, the activity trail, and everything that changes state.</p>
+            <details class="op" data-search="post /v1/super-admin/{kind}/{id}/status suspend or reactivate">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/{kind}/{id}/status</code>
+      <span class="summary">Suspend or reactivate</span>
+    </summary>
+    <div class="body"><p class="desc">Suspending a provider also stops them being routed new work — otherwise the queue would keep assigning visits to someone who cannot act on them.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>kind</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/activity who did what, and when">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/activity</code>
+      <span class="summary">Who did what, and when</span>
+    </summary>
+    <div class="body"><p class="desc">The hash-chained audit trail, filterable by actor, action, entity, client account, patient and date range. Filtering by patient gives the accounting of disclosures HIPAA asks for.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/activity/{entitytype}/{entityid} everything that ever happened to one record">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/activity/{entityType}/{entityId}</code>
+      <span class="summary">Everything that ever happened to one record</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>entityType</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>entityId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/activity/integrity verify the audit chain">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/activity/integrity</code>
+      <span class="summary">Verify the audit chain</span>
+    </summary>
+    <div class="body"><p class="desc">Recomputes every entry hash against the one before it. A false result means a row was altered or removed in the database directly, and is an incident rather than a warning.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/admins admin accounts">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/admins</code>
+      <span class="summary">Admin accounts</span>
+    </summary>
+    <div class="body"><p class="desc">The telehealth businesses using the platform, with their patient and order counts.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/admins create an admin account">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/admins</code>
+      <span class="summary">Create an admin account</span>
+    </summary>
+    <div class="body"><p class="desc">Creates the tenant and its owner, then emails an invite. No password is ever set here — the owner sets their own, so nobody else knows a credential that works.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/super-admin/admins/{id} update a client business">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/super-admin/admins/{id}</code>
+      <span class="summary">Update a client business</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/admins/{id} archive a client business">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/admins/{id}</code>
+      <span class="summary">Archive a client business</span>
+    </summary>
+    <div class="body"><p class="desc">Closes the account, deactivates its people and revokes its API keys. Nothing clinical or financial is deleted — those records are retained and the account can be restored.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/admins/{id}/profile everything about one client business">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/admins/{id}/profile</code>
+      <span class="summary">Everything about one client business</span>
+    </summary>
+    <div class="body"><p class="desc">Counts, pipeline, the pharmacies and clinicians serving them, top medications, revenue against cost of goods and provider fees, twelve months of volume, and the most recent prescriptions.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/admins/{id}/resend-invite resend the owner invite">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/admins/{id}/resend-invite</code>
+      <span class="summary">Resend the owner invite</span>
+    </summary>
+    <div class="body"><p class="desc">Revokes any outstanding invite first, so an older link stops working.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/admins/{id}/restore restore an archived client business">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/admins/{id}/restore</code>
+      <span class="summary">Restore an archived client business</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/admins/{id}/roster add a pharmacy or provider to a client’s roster">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/admins/{id}/roster</code>
+      <span class="summary">Add a pharmacy or provider to a client’s roster</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/admins/{id}/roster/remove remove a pharmacy or provider from a client’s roster">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/admins/{id}/roster/remove</code>
+      <span class="summary">Remove a pharmacy or provider from a client’s roster</span>
+    </summary>
+    <div class="body"><p class="desc">A clinician’s link is ended rather than deleted, so prescriptions they signed for this client stay explicable years later.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/invoices invoices across every client business">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/invoices</code>
+      <span class="summary">Invoices across every client business</span>
+    </summary>
+    <div class="body"><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/invoices/{id} one invoice, with its lines, payments and cost basis">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/invoices/{id}</code>
+      <span class="summary">One invoice, with its lines, payments and cost basis</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/invoices/{id}/issue issue a draft invoice">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/invoices/{id}/issue</code>
+      <span class="summary">Issue a draft invoice</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/invoices/{id}/payments record a payment">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/invoices/{id}/payments</code>
+      <span class="summary">Record a payment</span>
+    </summary>
+    <div class="body"><p class="desc">Settles the invoice when payments reach the total. Overpayment is refused.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/invoices/{id}/void void an invoice">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/invoices/{id}/void</code>
+      <span class="summary">Void an invoice</span>
+    </summary>
+    <div class="body"><p class="desc">Refused once paid — refund it instead.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/medications every product across every pharmacy">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/medications</code>
+      <span class="summary">Every product across every pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">The whole dispensing catalogue: kit code, the medId a client orders by, directions, what is dispensed, what it costs us and what we charge. Filter by pharmacy, category or form, or by <code>problem</code> to see only the rows that are unpriced or priced below cost.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/medications/filters the pharmacies and categories to filter by">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/medications/filters</code>
+      <span class="summary">The pharmacies and categories to filter by</span>
+    </summary>
+    <div class="body"><p class="desc">Small, bounded lists for the dropdowns — deliberately unpaginated.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/onboarding/{scope}/{id} one application in full">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/onboarding/{scope}/{id}</code>
+      <span class="summary">One application in full</span>
+    </summary>
+    <div class="body"><p class="desc">Everything the reviewer needs on one screen: the submission, the claimed licences, the uploaded documents and which of them are still required.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>scope</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/onboarding/{scope}/{id}/documents documents on an application">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/onboarding/{scope}/{id}/documents</code>
+      <span class="summary">Documents on an application</span>
+    </summary>
+    <div class="body"><p class="desc">Metadata and review state. File contents are fetched separately, per document.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>scope</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/onboarding/{scope}/{id}/documents upload a document on an applicant’s behalf">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/onboarding/{scope}/{id}/documents</code>
+      <span class="summary">Upload a document on an applicant’s behalf</span>
+    </summary>
+    <div class="body"><p class="desc">For the ordinary case where a certificate arrives by email or fax rather than through the form. Recorded against the Super Admin who uploaded it, so a reviewer can see the document did not come from the applicant. Send <code>state</code> with a STATE_MEDICAL_LICENSE, or accepting it verifies nothing.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>scope</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/onboarding/{scope}/documents/{documentid}/file view an uploaded document">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/onboarding/{scope}/documents/{documentId}/file</code>
+      <span class="summary">View an uploaded document</span>
+    </summary>
+    <div class="body"><p class="desc">Streams the file for inline preview. Served only to an authenticated reviewer, never from a public URL, and each read is written to the audit log — these are photo IDs and licences belonging to real people.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>scope</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>documentId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/onboarding/{scope}/documents/{documentid}/review accept or reject one document">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/onboarding/{scope}/documents/{documentId}/review</code>
+      <span class="summary">Accept or reject one document</span>
+    </summary>
+    <div class="body"><p class="desc">Accepting a STATE_MEDICAL_LICENSE also marks that state licence verified, which is the gate that lets the application be approved and the licence gate routing.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>scope</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>documentId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/onboarding/pharmacies pharmacy applications">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/onboarding/pharmacies</code>
+      <span class="summary">Pharmacy applications</span>
+    </summary>
+    <div class="body"><p class="desc">Keyset-paginated. Filter by status, a state they serve, submission date range, or free text across legal name, trading name and contact email.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/onboarding/pharmacies/{id}/decision decide a pharmacy application">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/onboarding/pharmacies/{id}/decision</code>
+      <span class="summary">Decide a pharmacy application</span>
+    </summary>
+    <div class="body"><p class="desc">Approval provisions the Pharmacy record, created inactive until credentials are attached. Approval is refused while any required document is unaccepted.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/onboarding/providers provider applications">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/onboarding/providers</code>
+      <span class="summary">Provider applications</span>
+    </summary>
+    <div class="body"><p class="desc">Keyset-paginated. Filter by status, a state they hold a licence in, submission date range, or free text across name, email and NPI.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/onboarding/providers/{id}/decision decide a provider application">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/onboarding/providers/{id}/decision</code>
+      <span class="summary">Decide a provider application</span>
+    </summary>
+    <div class="body"><p class="desc">Approval provisions the ProviderProfile and its state licences, both created inactive. Approval is refused while any claimed licence is unverified, because routing trusts these rows.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/onboarding/providers/{id}/licences/{licenceid}/unverify withdraw a licence verification">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/onboarding/providers/{id}/licences/{licenceId}/unverify</code>
+      <span class="summary">Withdraw a licence verification</span>
+    </summary>
+    <div class="body"><p class="desc">Undoes a verification made in error. An unverified licence simply blocks approval.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>licenceId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/onboarding/providers/{id}/licences/{licenceid}/verify verify a state licence by hand">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/onboarding/providers/{id}/licences/{licenceId}/verify</code>
+      <span class="summary">Verify a state licence by hand</span>
+    </summary>
+    <div class="body"><p class="desc">For when there is no certificate to accept — the state board is checkable online, or the document arrived outside the system. Requires a note saying what was checked and where, because routing relies on this to decide a clinician may prescribe into that state. Refused on an expired licence.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>licenceId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/orders/{orderid}/reroute send a stuck order to a different pharmacy">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/orders/{orderId}/reroute</code>
+      <span class="summary">Send a stuck order to a different pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">Cancels the order at the original pharmacy and raises a new one at the chosen pharmacy, then transmits it. Refused once the original has shipped. If the original pharmacy had already accepted it, the response says so — they must be told to cancel, or the patient gets two parcels.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>orderId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/orders/{orderid}/reroute-options where else this order could go">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/orders/{orderId}/reroute-options</code>
+      <span class="summary">Where else this order could go</span>
+    </summary>
+    <div class="body"><p class="desc">Every active pharmacy, each saying whether it can take this order and why not if it cannot — capability, and whether it stocks the kit.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>orderId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/orders/stuck orders that have not reached a pharmacy">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/orders/stuck</code>
+      <span class="summary">Orders that have not reached a pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">Anything queued with a transmission error, or sitting unsent. These are the ones where a patient is waiting on something nobody is working on.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/overview platform summary">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/overview</code>
+      <span class="summary">Platform summary</span>
+    </summary>
+    <div class="body"><p class="desc">Headline counts plus the active provider and pharmacy rosters. The counts come from one query rather than a dozen, because this page loads on every sign-in.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/patients every patient, across every account">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/patients</code>
+      <span class="summary">Every patient, across every account</span>
+    </summary>
+    <div class="body"><p class="desc">The platform sees one record per person even when several client businesses have sent them. Each tenant only ever sees its own link to that person.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/patients/{id} one complete patient record">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/patients/{id}</code>
+      <span class="summary">One complete patient record</span>
+    </summary>
+    <div class="body"><p class="desc">Demographics, allergies, conditions, medications, vitals, labs, visits, prescriptions and shipments. Nothing is withheld from this role — and every read is recorded as break-the-glass.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/pharmacies all pharmacies">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/pharmacies</code>
+      <span class="summary">All pharmacies</span>
+    </summary>
+    <div class="body"><p class="desc">Includes how many catalogue categories, products and contracted tenants each one has. Small, bounded set — deliberately unpaginated.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">uuid</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/pharmacies add a pharmacy">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/pharmacies</code>
+      <span class="summary">Add a pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">Capability flags matter: a branded medication cannot be routed to a compounding-only pharmacy, and intake rejects that combination before a visit is created.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">uuid</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>201</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/pharmacies/{id} one pharmacy in full">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/pharmacies/{id}</code>
+      <span class="summary">One pharmacy in full</span>
+    </summary>
+    <div class="body"><p class="desc">Profile, integration settings, documents, recent orders, and the whole catalogue — every category with its products, concentrations, vial sizes and cost of goods.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/pharmacies/{id} archive a pharmacy">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/pharmacies/{id}</code>
+      <span class="summary">Archive a pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">Refused while orders are in flight — a patient is waiting on each one.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/pharmacies/{id}/restore restore an archived pharmacy">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/pharmacies/{id}/restore</code>
+      <span class="summary">Restore an archived pharmacy</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/super-admin/pharmacies/{pharmacyid} update a pharmacy">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}</code>
+      <span class="summary">Update a pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">Partial update. Setting <code>isActive: false</code> removes it from tenant-facing lookups.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/pharmacies/{pharmacyid}/categories categories this pharmacy groups its stock into">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/categories</code>
+      <span class="summary">Categories this pharmacy groups its stock into</span>
+    </summary>
+    <div class="body"><p class="desc">Ordered by <code>sortOrder</code>, then name. Includes the product count in each.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/pharmacies/{pharmacyid}/categories add a category to a pharmacy">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/categories</code>
+      <span class="summary">Add a category to a pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">A pharmacy's own grouping of its stock. Distinct from the clinical category that drives questionnaires and provider qualification — two pharmacies routinely group the same drug differently. Link one with <code>clinicalCategorySlug</code> when the mapping is meaningful.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>201</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/super-admin/pharmacies/{pharmacyid}/categories/{categoryid} update a category">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/categories/{categoryId}</code>
+      <span class="summary">Update a category</span>
+    </summary>
+    <div class="body"><p class="desc">Partial update.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>categoryId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/pharmacies/{pharmacyid}/categories/{categoryid} remove a category">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/categories/{categoryId}</code>
+      <span class="summary">Remove a category</span>
+    </summary>
+    <div class="body"><p class="desc">Deactivates rather than deletes when the category still holds products: a kit code that has appeared on a dispensed order should stop being orderable, not stop having existed.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>categoryId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/pharmacies/{pharmacyid}/categories/{categoryid}/products products inside a category">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/categories/{categoryId}/products</code>
+      <span class="summary">Products inside a category</span>
+    </summary>
+    <div class="body"><p class="desc">Each carries kit code, favourite name, medication, concentration, vial size and cost of goods.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>categoryId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/pharmacies/{pharmacyid}/categories/{categoryid}/products add a product to a category">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/categories/{categoryId}/products</code>
+      <span class="summary">Add a product to a category</span>
+    </summary>
+    <div class="body"><p class="desc">Fields: <code>kitCode</code> is the code the pharmacy's own system expects on an order; <code>favouriteName</code> is the internal shorthand staff recognise; plus medication name, concentration, dosage form, vial size, days supply and cost of goods in whole cents.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>categoryId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>201</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/pharmacies/{pharmacyid}/integration how orders reach this pharmacy">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/integration</code>
+      <span class="summary">How orders reach this pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">The connection settings and whether the credentials behind <code>credentialRef</code> currently resolve. The credentials themselves are never returned.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="put /v1/super-admin/pharmacies/{pharmacyid}/integration configure how orders reach this pharmacy">
+    <summary>
+      <span class="verb put">PUT</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/integration</code>
+      <span class="summary">Configure how orders reach this pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">Switching <code>isEnabled</code> on is what allows a signed prescription to leave the platform, so it is deliberately separate from filling in the settings.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/pharmacies/{pharmacyid}/integration/orders/{orderid}/retry retry a transmission">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/integration/orders/{orderId}/retry</code>
+      <span class="summary">Retry a transmission</span>
+    </summary>
+    <div class="body"><p class="desc">For an order the pharmacy did not accept. An order they already accepted is returned unchanged rather than sent twice — resending one is how a patient receives two parcels. A rejection for a bad payload will be rejected again, so fix the cause first; the recorded error says what it was.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>orderId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>pharmacyId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">uuid</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>201</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/super-admin/pharmacies/{pharmacyid}/products/{productid} update a product">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/products/{productId}</code>
+      <span class="summary">Update a product</span>
+    </summary>
+    <div class="body"><p class="desc">Partial update. <code>costOfGoodsCents</code> is whole cents, never a decimal.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>productId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/pharmacies/{pharmacyid}/products/{productid} remove a product">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/pharmacies/{pharmacyId}/products/{productId}</code>
+      <span class="summary">Remove a product</span>
+    </summary>
+    <div class="body"><p class="desc">Retires rather than deletes if the product has ever been ordered, so dispensing history keeps its referent.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>productId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/pharmacies/directory pharmacy directory">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/pharmacies/directory</code>
+      <span class="summary">Pharmacy directory</span>
+    </summary>
+    <div class="body"><p class="desc">Approved pharmacies with catalogue size, monthly order volume and fulfilment time.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/prescriptions every prescription">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/prescriptions</code>
+      <span class="summary">Every prescription</span>
+    </summary>
+    <div class="body"><p class="desc">Across all accounts, with the prescriber, the licence it was signed under, and its shipment.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/prescriptions/{id}/invoice raise a draft invoice for a prescription">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/prescriptions/{id}/invoice</code>
+      <span class="summary">Raise a draft invoice for a prescription</span>
+    </summary>
+    <div class="body"><p class="desc">Built from the price the client quoted at intake. Refused if that prescription is already invoiced, and refused if no price was quoted — inventing one would be worse than raising nothing.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/prescriptions/reroute move several prescriptions to a different pharmacy">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/prescriptions/reroute</code>
+      <span class="summary">Move several prescriptions to a different pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">For each, cancels the live order and raises a new one at the chosen pharmacy, then transmits. Each is attempted independently: one that has already shipped is skipped and reported rather than failing the batch. The response says what moved and what did not, and why.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/providers provider directory">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/providers</code>
+      <span class="summary">Provider directory</span>
+    </summary>
+    <div class="body"><p class="desc">Approved clinicians with their decision counts, approval rate, average time to decision and earnings. Aggregates are computed in SQL, once per page — not per row.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/providers/{id} one provider in full">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/providers/{id}</code>
+      <span class="summary">One provider in full</span>
+    </summary>
+    <div class="body"><p class="desc">Identity, licences, qualifications, performance, earnings, the documents from their application and their recent decisions. Document URLs are authenticated streams, not public links.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/super-admin/providers/{id} update a provider">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/super-admin/providers/{id}</code>
+      <span class="summary">Update a provider</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/providers/{id} archive a provider">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/providers/{id}</code>
+      <span class="summary">Archive a provider</span>
+    </summary>
+    <div class="body"><p class="desc">Refused while they hold open visits — archiving then would leave those patients waiting on somebody who can no longer act. Prescriptions they signed are retained.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/providers/{id}/restore restore an archived provider">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/providers/{id}/restore</code>
+      <span class="summary">Restore an archived provider</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/reports/{kind} run a report">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/reports/{kind}</code>
+      <span class="summary">Run a report</span>
+    </summary>
+    <div class="body"><p class="desc">Cost of goods by pharmacy, revenue by client, what each clinician is owed, or activity by client. Every cost report publishes its coverage, so a partial figure is never read as exact.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>kind</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>format</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/revenue/by-tenant revenue and profit per client business">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/revenue/by-tenant</code>
+      <span class="summary">Revenue and profit per client business</span>
+    </summary>
+    <div class="body"><p class="desc">Which accounts earn their keep. Clients that ordered nothing are included.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/revenue/series revenue over time">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/revenue/series</code>
+      <span class="summary">Revenue over time</span>
+    </summary>
+    <div class="body"><p class="desc"><code>grain=day</code> is the last 30 days, <code>week</code> the last 3 months, <code>month</code> the last 12. Empty periods come back as zeroes rather than being omitted, so a quiet week is drawn as a dip rather than smoothed over by the line either side of it.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/revenue/summary revenue, cost and profit across the platform">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/revenue/summary</code>
+      <span class="summary">Revenue, cost and profit across the platform</span>
+    </summary>
+    <div class="body"><p class="desc">Today, this month, the last three months and all time. Revenue is what we charge client businesses; cost is what pharmacies charge us plus what clinicians are paid for reviews. Counted from orders, which only exist once a clinician approved the line — a refused request earns nothing and is excluded by construction.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/revenue/unpriced products priced in a way that loses money">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/revenue/unpriced</code>
+      <span class="summary">Products priced in a way that loses money</span>
+    </summary>
+    <div class="body"><p class="desc">Unpriced, priced below cost, or priced with no cost recorded behind it. All three are silent in a total — an unpriced product just makes the margin look worse, and a below-cost one makes volume look like success. Reported rather than blocked: selling under cost is sometimes deliberate, and a rule that refuses it would only be worked around.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/visits/{id}/questionnaire the questionnaire behind a visit">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/visits/{id}/questionnaire</code>
+      <span class="summary">The questionnaire behind a visit</span>
+    </summary>
+    <div class="body"><p class="desc">Decrypted intake answers, the clinical free text, and what the provider decided on each requested line. The most sensitive content the system holds, so the read is break-the-glass.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Visit (prescription request) id</td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details>
+          </section><section class="group" id="admin">
+            <h2>Client business</h2>
+            <p class="meta"><span><b>Called by</b> ADMIN</span><span><b>Auth</b> Session (Bearer)</span><span><b>9</b> endpoints</span></p>
+            <p class="group-blurb">A telehealth business looking at its own patients and orders. Scoped to that tenant in the data layer, so a missing filter cannot leak another client’s records.</p>
+            <details class="op" data-search="get /v1/admin/overview how many visits sit at each stage">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/overview</code>
+      <span class="summary">How many visits sit at each stage</span>
+    </summary>
+    <div class="body"><p class="desc">Counted with the same predicates the visit list filters by, so a tile and the table it links to can never disagree.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/patients my patients">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/patients</code>
+      <span class="summary">My patients</span>
+    </summary>
+    <div class="body"><p class="desc">Only people my business has sent. Visit and prescription counts are counted through my tenant too — a patient who also buys elsewhere does not reveal that here.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/patients/{id} one patient">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/patients/{id}</code>
+      <span class="summary">One patient</span>
+    </summary>
+    <div class="body"><p class="desc">Demographics, contact and ID-verification status. Sections this role may not read are listed in <code>redactedSections</code> so the UI can say they were withheld rather than imply the patient has none.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/prescriptions my prescriptions">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/prescriptions</code>
+      <span class="summary">My prescriptions</span>
+    </summary>
+    <div class="body"><p class="desc">What was actually signed, under which licence, and where the pharmacy order got to. Each row carries the same derived <code>stage</code> as the visit it came from, so the two never appear to disagree about where an order is.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/spend/series what i owe over time">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/spend/series</code>
+      <span class="summary">What I owe over time</span>
+    </summary>
+    <div class="body"><p class="desc"><code>grain=day</code> is the last 30 days, <code>week</code> the last 3 months, <code>month</code> the last 12. Empty periods come back as zeroes rather than being omitted.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/spend/summary what i owe the platform">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/spend/summary</code>
+      <span class="summary">What I owe the platform</span>
+    </summary>
+    <div class="body"><p class="desc">Today, this month, the last three months and the last twelve. Charged per approved medication at the price agreed for it. A visit a clinician did not approve is never charged for — no order is created, so there is nothing to bill.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/visits my visits">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/visits</code>
+      <span class="summary">My visits</span>
+    </summary>
+    <div class="body"><p class="desc">Every visit my business submitted, each carrying one derived <code>stage</code> — pending review, more information needed, refused, approved, sent to pharmacy, being filled, shipped, delivered, stuck or cancelled. The stage is computed from the request, the prescription and the pharmacy order together, and the <code>stage</code> filter reconstructs the same definition in SQL so the result count is the real one.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/visits/{id} one visit in full">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/visits/{id}</code>
+      <span class="summary">One visit in full</span>
+    </summary>
+    <div class="body"><p class="desc">The intake the patient submitted, the photos they uploaded, what was requested, what was prescribed, and where the pharmacy order got to. Provider notes and lab results are withheld and named in <code>redactedSections</code>. The read is recorded against the patient.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/visits/{id}/photos/{documentid} view a photo from one of my visits">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/visits/{id}/photos/{documentId}</code>
+      <span class="summary">View a photo from one of my visits</span>
+    </summary>
+    <div class="body"><p class="desc">Streams the image. Reached through the visit, so a document id on its own opens nothing, and recorded against the patient like any other look at their chart.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>documentId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details>
+          </section><section class="group" id="clinic">
+            <h2>Provider</h2>
+            <p class="meta"><span><b>Called by</b> PROVIDER</span><span><b>Auth</b> Session (Bearer)</span><span><b>7</b> endpoints</span></p>
+            <p class="group-blurb">A clinician’s review queue, and the decision that turns a visit into a prescription.</p>
+            <details class="op" data-search="get /v1/clinic/me/earnings the ledger behind my balance">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/clinic/me/earnings</code>
+      <span class="summary">The ledger behind my balance</span>
+    </summary>
+    <div class="body"><p class="desc">One line per completed review: what it was, which client sent it, what it paid, and whether it has been paid out yet.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/clinic/me/summary my workload and balance">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/clinic/me/summary</code>
+      <span class="summary">My workload and balance</span>
+    </summary>
+    <div class="body"><p class="desc">Reviews completed, split by outcome, and what has been recorded as earned against them — unpaid, paid and lifetime. Reviews and earnings are counted from separate tables, so a decision whose earning failed to record appears as <code>unrecorded</code> rather than as money silently missing from the total.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/clinic/queue visits assigned to me">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/clinic/queue</code>
+      <span class="summary">Visits assigned to me</span>
+    </summary>
+    <div class="body"><p class="desc">Keyset-paginated, oldest first by default so the longest-waiting patient surfaces first. Filter by status, category, patient state, or free text across master ID, surname and MRN.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/clinic/visits/{id} one visit, in full">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/clinic/visits/{id}</code>
+      <span class="summary">One visit, in full</span>
+    </summary>
+    <div class="body"><p class="desc">The questionnaire the patient answered, their allergies, conditions and medications, any photographs they uploaded, and what they asked for. This is what a decision is made from — approving without reading it is paperwork, not medicine.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/clinic/visits/{id}/decide decide every line and sign">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/clinic/visits/{id}/decide</code>
+      <span class="summary">Decide every line and sign</span>
+    </summary>
+    <div class="body"><p class="desc">Every line item must be decided in one call — a half-reviewed visit is not a decision. APPROVED and MODIFIED both require directions for use; MODIFIED and DENIED both require a reason. Each approved line becomes a signed prescription carrying the prescriber name and licence as they were at the moment of signature. Licensure is re-checked here, not just at assignment, because a licence can lapse in between.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Visit id</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Decision recorded and prescriptions signed</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/clinic/visits/{id}/photos/{documentid} view a photo from a visit">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/clinic/visits/{id}/photos/{documentId}</code>
+      <span class="summary">View a photo from a visit</span>
+    </summary>
+    <div class="body"><p class="desc">Streams the image itself. Identity documents are the reason a clinician can prescribe at all, so the read is recorded against the patient like any other look at their chart.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>documentId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/clinic/visits/{id}/start open a visit for review">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/clinic/visits/{id}/start</code>
+      <span class="summary">Open a visit for review</span>
+    </summary>
+    <div class="body"><p class="desc">Moves the visit to IN_REVIEW and stamps when review began. Idempotent.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Visit id</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details>
+          </section><section class="group" id="dispensary">
+            <h2>Pharmacy</h2>
+            <p class="meta"><span><b>Called by</b> PHARMACY</span><span><b>Auth</b> Session (Bearer)</span><span><b>16</b> endpoints</span></p>
+            <p class="group-blurb">The fill queue, shipment and issue reporting, the pharmacy’s own catalogue, its profile, and the connection that carries orders into its own system.</p>
+            <details class="op" data-search="get /v1/dispensary/catalog/categories my categories">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/dispensary/catalog/categories</code>
+      <span class="summary">My categories</span>
+    </summary>
+    <div class="body"><p class="desc">Every category this pharmacy groups its stock into, with how many products each holds.</p><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/dispensary/catalog/categories add a category">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/dispensary/catalog/categories</code>
+      <span class="summary">Add a category</span>
+    </summary>
+    <div class="body"><p class="desc"><code>defaultDaysSupply</code> is the length of a normal course here; products added to the category inherit it unless they state their own.</p><div class="responses"><span class="status ok"><b>201</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/dispensary/catalog/categories/{categoryid} update a category">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/dispensary/catalog/categories/{categoryId}</code>
+      <span class="summary">Update a category</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>categoryId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/dispensary/catalog/categories/{categoryid} remove a category">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/dispensary/catalog/categories/{categoryId}</code>
+      <span class="summary">Remove a category</span>
+    </summary>
+    <div class="body"><p class="desc">Deleted outright only while empty. A category holding products is deactivated instead, along with its products — a kit code that has appeared on a dispensed order is history, and should stop being orderable rather than stop having existed.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>categoryId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/dispensary/catalog/categories/{categoryid}/products products in one of my categories">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/dispensary/catalog/categories/{categoryId}/products</code>
+      <span class="summary">Products in one of my categories</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>categoryId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/dispensary/catalog/categories/{categoryid}/products add a product">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/dispensary/catalog/categories/{categoryId}/products</code>
+      <span class="summary">Add a product</span>
+    </summary>
+    <div class="body"><p class="desc">Kit ID, favourite name, medication, concentration, form, vial size, days supply and cost of goods. The kit ID is the identifier a client orders by — unique within this pharmacy, and the visit already names the pharmacy. <code>costOfGoodsCents</code> is whole cents and is what every margin figure on the platform is built from.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>categoryId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>201</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/dispensary/catalog/products/{productid} update a product">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/dispensary/catalog/products/{productId}</code>
+      <span class="summary">Update a product</span>
+    </summary>
+    <div class="body"><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>productId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/dispensary/catalog/products/{productid} remove a product">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/dispensary/catalog/products/{productId}</code>
+      <span class="summary">Remove a product</span>
+    </summary>
+    <div class="body"><p class="desc">Deleted if it has never been dispensed. If it has, it is deactivated instead and the response says so — it carries the cost basis of prescriptions already filled.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>productId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/dispensary/integration how orders reach my system">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/dispensary/integration</code>
+      <span class="summary">How orders reach my system</span>
+    </summary>
+    <div class="body"><p class="desc">The connection settings for this pharmacy, and whether a login is on file. The password is never returned — not even to the pharmacy that set it.</p><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="put /v1/dispensary/integration set how orders reach my system">
+    <summary>
+      <span class="verb put">PUT</span>
+      <code class="path">/v1/dispensary/integration</code>
+      <span class="summary">Set how orders reach my system</span>
+    </summary>
+    <div class="body"><p class="desc">The endpoint, the routing ids and the login. Until transmission is switched on, orders wait in the fill queue and nothing is sent.</p><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/dispensary/orders the fill queue, as a table">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/dispensary/orders</code>
+      <span class="summary">The fill queue, as a table</span>
+    </summary>
+    <div class="body"><p class="desc">Offset-paginated with page numbers, a sortable column and filters that survive in the URL. Search covers every field on the row — order id, pharmacy Rx number, tracking number, carrier, medication, directions, prescriber, patient name, MRN, city and state — because somebody looking an order up has whatever the caller gave them.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/dispensary/orders/{id}/issue raise a problem with an order">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/dispensary/orders/{id}/issue</code>
+      <span class="summary">Raise a problem with an order</span>
+    </summary>
+    <div class="body"><p class="desc">Opens a support thread with Super Admin, attached to this order and patient, and notifies them. Use for out-of-stock, an address problem, an unclear prescription, or a clinical concern.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Pharmacy order id</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/dispensary/orders/{id}/ship record carrier and tracking, and mark shipped">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/dispensary/orders/{id}/ship</code>
+      <span class="summary">Record carrier and tracking, and mark shipped</span>
+    </summary>
+    <div class="body"><p class="desc">Tracking numbers are shape-checked against the carrier so a transposed digit is caught at entry. On success the patient is notified in-app with full detail, and by email and SMS with a content-free nudge — a text naming the medication would disclose it to anyone looking at the lock screen.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Pharmacy order id</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/dispensary/profile my pharmacy">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/dispensary/profile</code>
+      <span class="summary">My pharmacy</span>
+    </summary>
+    <div class="body"><p class="desc">Contact details, what this pharmacy is permitted to dispense, and how it is doing.</p><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/dispensary/profile update my details">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/dispensary/profile</code>
+      <span class="summary">Update my details</span>
+    </summary>
+    <div class="body"><p class="desc">Contact details and the states this pharmacy ships into. Dispensing capability is not here — it decides what may be routed to this pharmacy and stays with the platform.</p><div class="responses"><span class="status ok"><b>200</b> </span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/dispensary/queue orders waiting to be filled">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/dispensary/queue</code>
+      <span class="summary">Orders waiting to be filled</span>
+    </summary>
+    <div class="body"><p class="desc">Keyset-paginated, oldest first. Carries the prescription, the ship-to address and the patient's active allergies. Does not carry the questionnaire or provider notes.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details>
+          </section><section class="group" id="portal">
+            <h2>Patient</h2>
+            <p class="meta"><span><b>Called by</b> PATIENT</span><span><b>Auth</b> Session (Bearer)</span><span><b>3</b> endpoints</span></p>
+            <p class="group-blurb">A patient’s own visits, prescriptions and shipments. Nobody else’s, by construction.</p>
+            <details class="op" data-search="get /v1/portal/prescriptions my prescriptions and their shipment status">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/portal/prescriptions</code>
+      <span class="summary">My prescriptions and their shipment status</span>
+    </summary>
+    <div class="body"><p class="desc">Each prescription carries the prescriber name and licence as recorded at the moment of signature, plus the latest shipment for that order.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/portal/record my demographics, allergies, conditions and medications">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/portal/record</code>
+      <span class="summary">My demographics, allergies, conditions and medications</span>
+    </summary>
+    <div class="body"><p class="desc">The chart is resolved from the session. No route here accepts a patient id.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/portal/visits my questionnaire submissions and their outcomes">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/portal/visits</code>
+      <span class="summary">My questionnaire submissions and their outcomes</span>
+    </summary>
+    <div class="body"><p class="desc">Deliberately omits which provider is assigned and which business referred me — neither is the patient's business until a decision exists.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details>
+          </section><section class="group" id="shared">
+            <h2>Shared</h2>
+            <p class="meta"><span><b>Called by</b> Any signed-in role</span><span><b>Auth</b> Session (Bearer)</span><span><b>7</b> endpoints</span></p>
+            <p class="group-blurb">Notifications and messaging, which every role has in its own scope.</p>
+            <details class="op" data-search="get /v1/chat/threads my conversations">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/chat/threads</code>
+      <span class="summary">My conversations</span>
+    </summary>
+    <div class="body"><p class="desc">Only threads I am a participant in. Newest activity first, with unread state.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/chat/threads start a conversation">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/chat/threads</code>
+      <span class="summary">Start a conversation</span>
+    </summary>
+    <div class="body"><p class="desc">Implied participants are added by kind: PATIENT_PROVIDER pulls in the patient, the support kinds pull in Super Admin. A thread naming a patient must be a case thread, not GENERAL — so that it is retained and audited as clinical.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/chat/threads/{id}/messages read a conversation">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/chat/threads/{id}/messages</code>
+      <span class="summary">Read a conversation</span>
+    </summary>
+    <div class="body"><p class="desc">Oldest first. Marks the thread read for me, and records a PHI access entry.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>limit</code><span class="req">required</span></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/chat/threads/{id}/messages post a message">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/chat/threads/{id}/messages</code>
+      <span class="summary">Post a message</span>
+    </summary>
+    <div class="body"><p class="desc">Encrypted at rest. Other participants get an in-app notification; nothing is emailed or texted, because the content of a clinical message never leaves authenticated surfaces.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/notifications my notifications">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/notifications</code>
+      <span class="summary">My notifications</span>
+    </summary>
+    <div class="body"><p class="desc">Newest first. Full content, because the caller is authenticated.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code><span class="req">required</span></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/notifications/{id}/read mark one as read">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/notifications/{id}/read</code>
+      <span class="summary">Mark one as read</span>
+    </summary>
+    <div class="body"><p class="desc">Scoped to the caller — marking someone else's notification read is a no-op, not an error.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/notifications/unread-count how many i have not read">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/notifications/unread-count</code>
+      <span class="summary">How many I have not read</span>
+    </summary>
+    <div class="body"><p class="desc">For the badge on the bell.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details>
+          </section><section class="group" id="ops">
+            <h2>Operations</h2>
+            <p class="meta"><span><b>Called by</b> Load balancers and monitoring</span><span><b>Auth</b> None</span><span><b>2</b> endpoints</span></p>
+            <p class="group-blurb">Liveness and readiness.</p>
+            <details class="op" data-search="get /healthz liveness">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/healthz</code>
+      <span class="summary">Liveness</span>
+    </summary>
+    <div class="body"><p class="desc">Is the process up? Touches nothing external, so it never fails because a dependency is slow. Point the container restart probe here.</p><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
+  </details><details class="op" data-search="get /readyz readiness">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/readyz</code>
+      <span class="summary">Readiness</span>
+    </summary>
+    <div class="body"><p class="desc">Can this instance serve traffic? Checks the database. Point the load balancer here so an instance that has lost its database stops receiving requests without being killed.</p><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
+  </details>
+          </section>
+
+      <footer>
+        Generated from <code>http://localhost:4000/docs-json</code>. Rebuild with
+        <code>node scripts/build-api-docs.mjs</code> after changing a controller.
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+  // Filtering is the feature a reference of this size lives or dies by.
+  const filter = document.querySelector('.filter');
+  const ops = [...document.querySelectorAll('details.op')];
+  const sections = [...document.querySelectorAll('section.group')];
+
+  filter.addEventListener('input', () => {
+    const needle = filter.value.trim().toLowerCase();
+    for (const op of ops) {
+      const hit = !needle || op.dataset.search.includes(needle);
+      op.classList.toggle('hidden', !hit);
+      if (needle && hit) op.open = true;
+      if (!needle) op.open = false;
+    }
+    for (const section of sections) {
+      const anyVisible = [...section.querySelectorAll('details.op')].some((op) => !op.classList.contains('hidden'));
+      section.classList.toggle('hidden', !anyVisible);
+    }
+  });
+</script>

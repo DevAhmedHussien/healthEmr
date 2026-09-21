@@ -1,0 +1,29 @@
+{
+  "name": "health-emr",
+  "packageManager": "npm@10.5.0",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:up": "docker compose up -d postgres",
+    "db:generate": "npm run db:generate -w @health-emr/api",
+    "db:migrate": "npm run db:migrate -w @health-emr/api",
+    "db:seed": "npm run db:seed -w @health-emr/api"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3",
+    "prettier": "^3.4.2"
+  }
+}

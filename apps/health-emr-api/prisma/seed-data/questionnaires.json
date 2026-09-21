@@ -1,0 +1,801 @@
+{
+  "weightloss": {
+    "title": "About your weight",
+    "intro": "A licensed clinician reads every answer before deciding. Answer as accurately as you can \u2014 this is the only chance to tell them something that matters.",
+    "requiresPhotoId": true,
+    "questions": [
+      {
+        "id": "7yoAGgUHEtEE",
+        "prompt": "Are you currently pregnant, breastfeeding or planning to become pregnant?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Yes",
+          "No and I acknowledge that these medications are not safe to use during pregnancy or while breastfeeding, as they may pose risks to a developing baby."
+        ]
+      },
+      {
+        "id": "fUylzIorG0yY",
+        "prompt": "What was the highest weight that you have reached?",
+        "kind": "weight",
+        "required": true
+      },
+      {
+        "id": "Va24KnDVSVKe",
+        "prompt": "What is your height in feet and inches?",
+        "kind": "height",
+        "required": true
+      },
+      {
+        "id": "7Hn8sJmQD15v",
+        "prompt": "What is your weight in pounds?",
+        "kind": "weight",
+        "required": true
+      },
+      {
+        "id": "dptewnINx1d1",
+        "prompt": "How would you describe your current approach to weight management?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Actively managing",
+          "Some efforts",
+          "No active efforts"
+        ]
+      },
+      {
+        "id": "xUWjkjFarSoC",
+        "prompt": "Please check all current or past medical conditions:",
+        "kind": "multiple",
+        "required": true,
+        "options": [
+          "Gastroparesis (Paralysis of your intestines)",
+          "Triglycerides over 600 at any point",
+          "Pancreatic cancer or pancreatitis",
+          "Type 1 Diabetes/Insulin-dependent diabetes",
+          "Hypoglycemia (low blood sugar)",
+          "Personal or family history of medullary thyroid cancer",
+          "Personal or family history of Multiple Endocrine Neoplasia (MEN-2) syndrome",
+          "Anorexia or bulimia",
+          "Liver failure/liver cirrhosis",
+          "Chronic Kidney Disease Stage 3b or greater",
+          "Syndrome of Inappropriate Antidiuretic hormone",
+          "Current symptomatic gallstones",
+          "Current gallstones without symptoms",
+          "Past removal of your gallbladder",
+          "Hypothyroidism, Hyperthyroidism, or Thyroid Issues",
+          "None of the above"
+        ]
+      },
+      {
+        "id": "iZ5J8GHq8LPO",
+        "prompt": "Gallstone Consent:",
+        "kind": "consent",
+        "required": true,
+        "body": "Use of GLP-1 medications, including semaglutide, tirzepatide, and similar products, has been associated with an increased risk of gallbladder or biliary issues, including the development or worsening of gallstones. If you have existing but asymptomatic gallstones, treatment may increase the chance that these stones become symptomatic, potentially leading to pain, inflammation, or the need for medical or surgical treatment. Please notify your provider if you have a history of gallstones or experience new upper abdominal pain, nausea, or vomiting during therapy. Knowing this risk, do you wish to continue?",
+        "options": [
+          "I acknowledge and wish to continue",
+          "I do not wish to continue"
+        ],
+        "disqualifyIf": [
+          "I do not wish to continue"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      },
+      {
+        "id": "5LOm1M9GkkPH",
+        "prompt": "Cholecystectomy Consent:",
+        "kind": "consent",
+        "required": true,
+        "body": "You reported a history of gallbladder disease or gallbladder removal. This medication may still be appropriate, but it can affect how your body digests fats and bile. Without a gallbladder, bile flow and fat digestion are altered, which may increase the risk of side effects like stomach pain or diarrhea.\nThis medication may also impact absorption of certain nutrients (especially vitamins A, D, E, and K). To reduce risk, eat smaller, frequent meals, avoid processed foods, and consider a daily multivitamin unless otherwise directed by your provider.\nIf you have gallstones, please note that weight loss and this medication can increase the risk of gallstone formation or blockage, which can cause severe pain, infection, or pancreatitis. Seek immediate medical care for abdominal pain, fever, or vomiting.",
+        "options": [
+          "I acknowledge that I have read and understood the above information and wish to continue.",
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyIf": [
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      },
+      {
+        "id": "qrfGnyjLmkVZ",
+        "prompt": "Have you had a gastric bypass in the past 6 months?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "Tf05d0KwSPsG",
+        "prompt": "Are you allergic to any of the following?",
+        "kind": "multiple",
+        "required": true,
+        "options": [
+          "Ozempic (Semaglutide)",
+          "Wegovy (Semaglutide)",
+          "Mounjaro (Tirzepatide)",
+          "Zepbound (Tirzepatide)",
+          "Saxenda (Liraglutide)",
+          "Trulicity (Dulaglutide)",
+          "None of the above"
+        ]
+      },
+      {
+        "id": "7nPOgC2r8q91",
+        "prompt": "Are you currently, or have you in the past two months, taken any of the following medications?",
+        "kind": "multiple",
+        "required": true,
+        "options": [
+          "Semaglutide (Ozempic, Wegovy, Rybelsus)",
+          "Tirzepatide (Zepbound, Mounjaro)",
+          "None of these"
+        ]
+      },
+      {
+        "id": "vItPrEf001",
+        "prompt": "Which vitamin additive would you prefer with your medication?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "B12",
+          "B6"
+        ]
+      },
+      {
+        "id": "wn6bPGpKQN8W",
+        "prompt": "Are you able to safely give yourself injections or have someone help you?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Yes, I can inject myself or have help",
+          "No, I would need an oral option"
+        ]
+      },
+      {
+        "id": "Bg7QxtVAXUeO",
+        "prompt": "When did you last take your prescribed weight loss medication?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Within the past week",
+          "Within the past 2\u20133 weeks",
+          "Over a month ago"
+        ]
+      },
+      {
+        "id": "jrQkRvc9WeUt",
+        "prompt": "I'm so sorry, but these medications gradually build up in your system. Since you've been off this medication for an extended period, it's safest to restart at a lower dose, typically about 50% of your previous dose, and titrate back up. Restarting at a high dose after a break can cause significant side effects, sometimes requiring emergency care or hospitalization. Would you like to continue with a lower starting dose?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "I understand and agree to the dose reduction",
+          "I do not agree and do not wish to continue"
+        ],
+        "disqualifyIf": [
+          "I do not agree and do not wish to continue"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      },
+      {
+        "id": "A4xIpJUDa4pb",
+        "prompt": "I'm so sorry, but these medications gradually build up in your system. Since you've been off this medication for an extended period, it's safest to restart at the starter dose and titrate back up. Restarting at a high dose after a break can cause significant side effects, sometimes requiring emergency care or hospitalization. Would you like to continue with a lower starting dose?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "I understand and agree to the dose reduction",
+          "I do not agree and do not wish to continue"
+        ],
+        "disqualifyIf": [
+          "I do not agree and do not wish to continue"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      },
+      {
+        "id": "9qpA840jkaX6",
+        "prompt": "Please provide the approximate date (month and day) of your last use of this medication",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "hLx5jNAYTyXf",
+        "prompt": "Which medication and dose most closely matches your most recent dose?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Semaglutide/Ozempic/Wegovy 0.25mg",
+          "Semaglutide/Ozempic/Wegovy 0.5mg",
+          "Semaglutide/Ozempic/Wegovy 1mg",
+          "Semaglutide/Ozempic/Wegovy 1.5 or 1.7mg",
+          "Semaglutide/Ozempic/Wegovy 2.0mg",
+          "Semaglutide/Ozempic/Wegovy 2.4mg",
+          "Tirzepatide/Mounjaro/Zepbound 2.5mg",
+          "Tirzepatide/Mounjaro/Zepbound 5mg",
+          "Tirzepatide/Mounjaro/Zepbound 7.5mg",
+          "Tirzepatide/Mounjaro/Zepbound 10mg",
+          "Tirzepatide/Mounjaro/Zepbound 12.5mg",
+          "Tirzepatide/Mounjaro/Zepbound 15mg"
+        ]
+      },
+      {
+        "id": "kYyWn3rXJ5oM",
+        "prompt": "Are you currently using a brand name medication or a compounded version?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "I'm taking a brand name medication",
+          "I'm taking a compounded product"
+        ]
+      },
+      {
+        "id": "JlVfOMN7ezCI",
+        "prompt": "Please tell us the name and dose of the compounded medication you're taking.",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "gtGFENTgXb2h",
+        "prompt": "Have you experienced any side effects from your current medication?",
+        "kind": "multiple",
+        "required": true,
+        "options": [
+          "Yes I have experienced fatigue and WOULD like to explore the option of including an additive which may help manage my fatigue symptoms",
+          "Yes I have experienced nausea and WOULD like to explore the option of including an additive which may help reduce your nausea",
+          "Yes I have experienced muscle loss and WOULD like to explore the option of including an additive which may help to support muscle health",
+          "None of the above"
+        ]
+      },
+      {
+        "id": "lD8McP6NT9Oh",
+        "prompt": "How are you responding to your medication?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "I'm not feeling any effects and have no side effects",
+          "I'm not feeling any effects but I'm having side effects",
+          "I'm feeling the effects but have side effects",
+          "I'm feeling the effects and have no side effects"
+        ]
+      },
+      {
+        "id": "jPQ21D3cwvBo",
+        "prompt": "How would you like to continue your treatment?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Stay at the same or closest equivalent dose",
+          "Increase the dose if possible, or continue current if already at maximum",
+          "Decrease my dose"
+        ]
+      },
+      {
+        "id": "iuYrbJIfiUVe",
+        "prompt": "What other information or questions do you have for the doctor?",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "KHGb1mZBUfY1",
+        "prompt": "Consent (Truthfulness):",
+        "kind": "consent",
+        "required": true,
+        "body": "I verify that I am the patient and that I have answered the questions asked in this intake form. I confirm that I have reviewed and understood all the questions asked of me. I attest that the answers and information I have provided in this questionnaire is true and complete to the best of my knowledge. I understand that it is critical to my health to share complete health information with my doctor. I will not hold the doctor or affiliated medical practice responsible for any oversights or omissions, whether intentional or not, in the information that I provided.",
+        "options": [
+          "I have read the above information and I do consent and wish to move forward",
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyIf": [
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      },
+      {
+        "id": "AYiXQDZyuE8X",
+        "prompt": "Informed Consent for Compounded GLP-1 Therapy:",
+        "kind": "consent",
+        "required": true,
+        "body": "You are requesting treatment with a compounded GLP-1 receptor agonist or GIP/GLP-1 receptor agonist medication, such as semaglutide, tirzepatide, or liraglutide, as part of a medical weight management or obesity treatment plan. These medications work by mimicking incretin hormones that regulate appetite, slow gastric emptying, promote fullness, and improve metabolic health.\n\nCompounded medications are custom-prepared by licensed pharmacists. These formulations may allow for alternative dosing schedules, titration strategies, dosing frequencies, routes of administration, or the addition of ingredients intended to improve tolerability or reduce side effects. Compounded medications are not reviewed or approved by the U.S. Food and Drug Administration (FDA) and are not subject to the same testing, clinical trials, or manufacturing oversight as FDA-approved brand-name products.\n\nWeight loss medications are typically prescribed for individuals who are obese, or for individuals who are overweight with related medical conditions. Use of these medications in individuals who are overweight without an associated medical condition is considered off-label.\n\nPotential benefits include weight loss or weight management, improved blood glucose control, reduced cardiovascular risk, and overall improvement in metabolic health. Common side effects include nausea, vomiting, diarrhea, constipation, decreased appetite, and indigestion. Serious risks include pancreatitis, low blood sugar, gallbladder disease, kidney injury, allergic reactions, and gastroparesis.\n\nThese medications are not safe for use during pregnancy or while breastfeeding. If you use oral birth control, you must use a barrier method for the first month after starting treatment and for one month after any dose increase. After stopping, continue contraception for at least two months.\n\nBy proceeding, you acknowledge that compounded medications are not FDA-approved and may differ from FDA-approved products in safety and effectiveness.",
+        "options": [
+          "I have read and understand the above information and I wish to continue",
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyIf": [
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      }
+    ]
+  },
+  "antiAging": {
+    "title": "About your wellness goals",
+    "intro": "A licensed clinician reads every answer before deciding. Answer as accurately as you can \u2014 this is the only chance to tell them something that matters.",
+    "requiresPhotoId": true,
+    "questions": [
+      {
+        "id": "vzvbDbseJaj5",
+        "prompt": "Are you currently pregnant, breastfeeding or planning to become pregnant?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "sUj34ymx4JQR",
+        "prompt": "I understand that the medication prescribed to me by my healthcare provider may not be safe to take during pregnancy or while breastfeeding...",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "I have read and understand the above information, I understand the risks and wish to proceed",
+          "I have read the information and do NOT wish to proceed"
+        ],
+        "disqualifyIf": [
+          "I have read the information and do NOT wish to proceed"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      },
+      {
+        "id": "ys4KP6ZwZqQH",
+        "prompt": "What is your height in feet and inches?",
+        "kind": "height",
+        "required": true
+      },
+      {
+        "id": "NwdikkcYMHSx",
+        "prompt": "What is your weight in pounds?",
+        "kind": "weight",
+        "required": true
+      },
+      {
+        "id": "TAYgqBl700rI",
+        "prompt": "What is your primary reason for requesting this medication?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "General wellness",
+          "Anti-Aging",
+          "Antioxidant benefits",
+          "Boost energy",
+          "Brighten skin",
+          "Detoxification",
+          "Immune support",
+          "Other"
+        ]
+      },
+      {
+        "id": "WuqtEenp1HAs",
+        "prompt": "Are you currently experiencing any of the following?",
+        "kind": "multiple",
+        "required": true,
+        "options": [
+          "Fatigue or Low Energy",
+          "Memory Issues",
+          "Difficulty Concentrating",
+          "Depression or Anxiety",
+          "Sleep Disorders",
+          "Chronic Pain",
+          "Other",
+          "None of these apply to me"
+        ]
+      },
+      {
+        "id": "mwYpEePqgEpg",
+        "prompt": "Please provide further information about this condition.",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "oaCunO1dM1wX",
+        "prompt": "Have you ever received anti-aging treatment before with metformin, MIC, vitamin B12, glutathione or NAD?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "ZwNV4sdUrzLw",
+        "prompt": "Did you experience any allergies or negative reactions to any of these?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "knt9G68M9t5T",
+        "prompt": "Please tell us more about what you used, when this was used, and what side effect you experienced.",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "uhGLZ7SYl5U0",
+        "prompt": "Do you have a known history of glucose-6-phosphate dehydrogenase (G6PD) deficiency, chronic kidney disease (CKD) or liver cirrhosis?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "jdzamWsEV82z",
+        "prompt": "Are you currently undergoing treatment for cancer, including chemotherapy or radiation therapy?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "qGxsUdGffy93",
+        "prompt": "What other information or questions do you have for the doctor?",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "N52APyTLaozP",
+        "prompt": "Consent (Truthfulness): Please attest to the following confirming that all information you have provided to us is true and complete.",
+        "kind": "consent",
+        "required": true,
+        "body": "Consent (Truthfulness): I verify that I am the patient and that I have answered the questions asked in this intake form. I confirm that I have reviewed and understood all the questions asked of me. I attest that the answers and information I have provided in this questionnaire is true and complete to the best of my knowledge. I understand that it is critical to my health to share complete health information with my doctor. I will not hold the doctor or affiliated medical practice responsible for any oversights or omissions, whether intentional or not, in the information that I provided.",
+        "options": [
+          "I have read the above information and I do consent and wish to move forward",
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyIf": [
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      },
+      {
+        "id": "xsMFTaPONV84",
+        "prompt": "Combined Informed Consent",
+        "kind": "consent",
+        "required": true,
+        "body": "Combined Informed Consent\n\nYou are requesting treatment with one or more lifestyle-enhancement therapies including MIC injections, Glutathione, and/or NAD+ (Nicotinamide Adenine Dinucleotide) to support metabolism, enhance energy production, promote cellular health, and potentially provide anti-aging benefits. These therapies are not intended for treatment of any specific medical condition.\n\n\u25c9 Purpose of This Consent\nThis form ensures you understand:\nThe reason for prescribing these products\nTheir potential benefits and risks\nThe off-label status of certain components\nThe monitoring and follow-up plan\nYour responsibilities during treatment\n\n\u25c9 Background Information\n\nMIC+B12 combines lipotropic agents (Methionine, Inositol, Choline) with Vitamin B12 to aid fat metabolism and boost energy.\n\nVitamin B12 (cobalamin) is essential for red blood cell production, neurological function, and DNA synthesis. Deficiency can arise from dietary insufficiency (e.g., vegan diets), malabsorption, or interactions with medications such as Metformin or proton-pump inhibitors.\n\nGlutathione is a natural antioxidant that reduces oxidative stress, supports detoxification, and enhances immune function.\n\nNAD+ is a coenzyme vital for mitochondrial energy production, DNA repair, and overall cellular health.\n\nMetformin is a prescription medication for type 2 diabetes that is being studied off-label for metabolic and anti-aging effects.\n\nOff-Label Use Notice\n\nGlutathione, NAD+, and Metformin are not FDA-approved for wellness or anti-aging indications.\n\nTheir use in this program is off-label, intended solely for health optimization and lifestyle enhancement.\n\nPotential Benefits\n\nMIC+B12: Enhanced metabolism and fat burning\nVitamin B12: Improved energy, neurological health, and cognitive function\nNAD+: Increased cellular energy and mitochondrial function\nGlutathione: Detoxification and antioxidant protection\nMetformin: Improved insulin sensitivity and metabolic efficiency\nAll therapies: Increased vitality, reduced fatigue, and potential anti-aging effects\n\nPotential Risks and Side Effects\n\nMIC+B12\nCommon: Injection-site redness, swelling, pain; nausea; mild diarrhea\nSerious: Allergic reaction (rash, itching, breathing difficulty); elevated liver enzymes; rare injection-site infection\n\nVitamin B12\nCommon: Mild diarrhea; skin rash or itching; headache; nausea\nRare: Severe allergic reactions (anaphylaxis); hypokalemia with rapid correction; exacerbation of acne or rosacea\n\nGlutathione\nCommon: GI discomfort; headache; skin reactions (rash, itching)\nRare: Allergic reaction; localized skin lightening\n\nNAD+\nCommon: Nausea; fatigue; flushing; headache; abdominal cramping; dizziness\nLess common: Anxiety; sweating; muscle cramps; injection-site pain or swelling\n\nMetformin\nCommon: GI upset (nausea, bloating, diarrhea)\nRare but serious: Lactic acidosis (especially with kidney or liver impairment); long-term vitamin B12 deficiency\n\nRisks and Considerations\nAllergic Reactions: Discontinue treatment and seek immediate care if you experience rash, swelling, or breathing difficulty.\n\nKidney Function: Use Metformin cautiously with impaired kidney function.\nSupplement Interactions: Disclose all medications and supplements to avoid interactions, particularly those affecting absorption of Vitamin B12.\nMonitoring and Follow-Up\nAttend all scheduled follow-up visits for assessment of therapy response and side-effect monitoring.\n\nPatient Responsibilities\n\nBy consenting to these therapies, you agree to:\nFollow the prescribed treatment plan exactly\nReport new or worsening symptoms promptly\nAvoid altering dosage or frequency without medical approval\nAttend all recommended follow-up appointments\nInform your provider of any changes in medications, supplements, or health status\n\nPatient Acknowledgment and Consent\n\nI have read and understood the information provided in this consent form.\nI understand the potential risks and benefits of using this product and the off-label nature of this treatment.\nI agree to adhere to the monitoring plan and to inform my healthcare provider of any side effects or concerns.\n\nBy selecting below, I voluntarily consent to the use of this product for the treatment of my symptoms.",
+        "options": [
+          "I have read the above information, I understand the risks and would like to proceed",
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyIf": [
+          "I have read the above information and I do not wish to continue"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      }
+    ]
+  },
+  "ED": {
+    "title": "About your sexual health",
+    "intro": "A licensed clinician reads every answer before deciding. Answer as accurately as you can \u2014 this is the only chance to tell them something that matters.",
+    "requiresPhotoId": true,
+    "questions": [
+      {
+        "id": "qKbHb44oUyS4",
+        "prompt": "How tall are you? (feet & inches)",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "dPlYlWfnvQ2a",
+        "prompt": "What is your current weight? (in pounds)",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "zTIrHyE2QmuU",
+        "prompt": "Do you ever have a problem getting or maintaining an erection that is rigid enough for sex?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Yes \u2013 every time",
+          "Yes \u2013 more than half the time",
+          "Yes \u2013 on occasion",
+          "Yes \u2013 but rarely",
+          "I never have a problem getting or maintaining an erection"
+        ]
+      },
+      {
+        "id": "1Gqa8LJATlE4",
+        "prompt": "Do you get erections\u2026",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "When you wake up",
+          "Other times",
+          "Neither"
+        ]
+      },
+      {
+        "id": "mTWBWAkUelqL",
+        "prompt": "Have you ever been formally treated for ED or tried medicines, vitamins, or supplements?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "tZeiT8rBrJ2H",
+        "prompt": "Please provide any details related to the treatment, dosage and effectiveness",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "Jaks5PiXbE3J",
+        "prompt": "Did you experience any side effects from your treatments for ED?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "jT4jGCs9ZPyB",
+        "prompt": "Please explain any side effects you experienced.",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "ZnmuwoAZTGuK",
+        "prompt": "Have you had a physical exam in the past 5 years?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Yes, I am in good health",
+          "Yes, problems were found",
+          "No"
+        ]
+      },
+      {
+        "id": "pvaQbnNQtkeN",
+        "prompt": "Please explain any issues during your last physical exam",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "RnJsAOJFeB2O",
+        "prompt": "Was your blood pressure taken in the past year?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "4cncNyRNLPUB",
+        "prompt": "What was the value?",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "V5Vb4ViL9iNr",
+        "prompt": "Do you take any of the following medicines? Select all that apply.",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Nitroglycerin spray, ointment, patches or tablets",
+          "Isosorbide mononitrate, or isosorbide dinitrate (Isordil, Dilatrate, Sorbitrate, Imdur, Ismo, Monoket)",
+          "Other medicines containing nitrates",
+          "Alpha blocker medications: doxazosin (Cardura), prazosin (Minipress), terazosin (Hytrin)",
+          "Riociguat (Adempas)",
+          "None apply"
+        ]
+      },
+      {
+        "id": "Xt55PMHM9Fhm",
+        "prompt": "Do any of the following cardiovascular risk factors apply to you? Select all that apply.",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Diabetes",
+          "High cholesterol",
+          "High blood pressure",
+          "My father had a heart attack or heart disease at 55 years or younger",
+          "My mother had a heart attack or heart disease at 65 years or younger",
+          "None apply to me"
+        ]
+      },
+      {
+        "id": "Y5H1aK2LNd1H",
+        "prompt": "When was your last Hemoglobin A1c checked and what was the value?",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "1EWrtKT0L9gj",
+        "prompt": "Tell us more about your high cholesterol",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "bEfoRdYK6kC2",
+        "prompt": "Tell us more about your high blood pressure",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "BF3HQLs0AKwj",
+        "prompt": "Do you have or have you previously been diagnosed with any of the following? Check all that apply.",
+        "kind": "multiple",
+        "required": true,
+        "options": [
+          "Prostate cancer",
+          "Enlarged prostate (BPH)",
+          "Kidney transplant or any condition affecting the kidney",
+          "Pulmonary artery hypertension (PAH)",
+          "Liver disease",
+          "Multiple Sclerosis (MS) or similar disease",
+          "Spinal injuries and/or paralysis",
+          "Neurological diseases",
+          "Stomach, intestinal, or bowel ulcers",
+          "Heart arrhythmias (abnormal beating of the heart)",
+          "Any acquired, congenital, or developmental abnormalities of the heart including heart murmurs",
+          "None of these apply to me"
+        ]
+      },
+      {
+        "id": "oMLJtYlWTI6E",
+        "prompt": "Please tell us more about the diagnoses you selected (diagnosis and treatment).",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "WZjYO9GEZyJr",
+        "prompt": "Do you experience any of the following cardiovascular symptoms?",
+        "kind": "multiple",
+        "required": true,
+        "options": [
+          "Chest pain or shortness of breath when climbing 2 flights of stairs or walking 4 blocks",
+          "Chest pain or shortness of breath with sexual activity",
+          "Unexplained fainting or dizziness",
+          "Prolonged cramping of the legs with exercise",
+          "Abnormal heart beats or rhythms",
+          "None of these apply to me"
+        ]
+      },
+      {
+        "id": "Q5IdcUrQFMvl",
+        "prompt": "Please tell us more about your prolonged leg cramps.",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "fZWE5BJAFHuG",
+        "prompt": "Do you use any of the following recreational drugs?",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Poppers or Rush",
+          "Amyl Nitrate or Butyl Nitrate",
+          "Cocaine",
+          "Cigarettes",
+          "Other",
+          "No I don't use any of these"
+        ]
+      },
+      {
+        "id": "iqzHdLsoTNrp",
+        "prompt": "Please explain your use of the drugs you selected. How frequently do you use them? When was the last time you used them?",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "id": "lXgS9CbPj4EY",
+        "prompt": "Do you have a marked curve or bend in the penis that interferes with sex, or Peyronie's Disease?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "GOY4Kbew9LIO",
+        "prompt": "Have you had active bending of your penis within the last 12 months?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "xLtCwZjzNCrr",
+        "prompt": "Do you experience pain with erections or with ejaculation?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "uT3QNRu6gC6f",
+        "prompt": "Do you have a foreskin that is too tight?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "xLOTGQ1amcYu",
+        "prompt": "Do you have now, or have you ever had any of the following conditions? Select all that apply.",
+        "kind": "single",
+        "required": true,
+        "options": [
+          "Priapism (erection lasting longer than 4 hours)",
+          "Retinitis Pigmentosa",
+          "Sudden vision loss",
+          "Neurologic disease or stroke",
+          "Blood clotting disorder, abnormal bleeding or bruising",
+          "Stomach or intestinal ulcer",
+          "A prior heart attack or heart failure",
+          "Peripheral artery disease",
+          "Any history of QT prolongation",
+          "Sickle cell anemia, Myeloma, Leukemia",
+          "Idiopathic Hypertrophic Subaortic Stenosis",
+          "Use of blood thinners",
+          "None apply"
+        ]
+      },
+      {
+        "id": "L2uzKz6KjLfK",
+        "prompt": "Have you had a heart attack within the last three months?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "ngGHUntjPgky",
+        "prompt": "Have you had a stroke within the last six months?",
+        "kind": "yesNo",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "id": "zpS23bEtFdZb",
+        "prompt": "Please tell us more about your conditions you selected.",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "TjwmgE2EB16h",
+        "prompt": "What other information or questions do you have for the doctor?",
+        "kind": "longText",
+        "required": true
+      },
+      {
+        "id": "pmYWVDVaDyxa",
+        "prompt": "Consent IF offering PDE5i alone:",
+        "kind": "consent",
+        "required": true,
+        "body": "You have been diagnosed with or have reported that you have a known diagnosis of organic or psychogenic (situation) erectile dysfunction, a condition characterized by the inability to achieve or maintain an erection sufficient for satisfactory sexual performance. Phosphodiesterase Type 5 Inhibitors (PDE5i) are medications prescribed to treat this condition by enhancing erectile function. Common PDE5 inhibitors include Sildenafil (Viagra), Tadalafil (Cialis), Vardenafil (Levitra), and Avanafil (Stendra). These medications work by increasing blood flow to the penis during sexual stimulation. The use of PDE5 inhibitors may improve your ability to achieve and maintain an erection, enhance sexual performance and satisfaction, and improve your quality of life and personal relationships. While PDE5 inhibitors are generally well-tolerated, possible side effects may include headache, flushing, indigestion or upset stomach, nasal congestion, dizziness or lightheadedness, visual disturbances such as blurred vision or changes in color perception, back pain or muscle aches (more common with Tadalafil), hearing loss or ringing in the ears (rare), priapism (a prolonged erection lasting more than four hours), and allergic reactions like rash, itching, or swelling. Do not use PDE5 inhibitors if you take nitrates for chest pain (angina), use recreational drugs called \"poppers\" (amyl nitrate or nitrite), have severe heart or liver problems, have recently had a stroke or heart attack, or have low blood pressure. Alternative treatments include lifestyle changes such as exercise, weight loss, quitting smoking, and reducing alcohol intake; psychotherapy or counseling for psychological causes of erectile dysfunction; vacuum erection devices, which are mechanical pumps to induce erections; penile injections or suppositories where medications are administered directly to the penis; hormone therapy if low testosterone levels are contributing to erectile dysfunction; and surgical options like penile implants or vascular surgery. I understand the potential benefits, risks, and side effects of using PDE5 inhibitors. I have been informed about alternative treatment options. I agree to inform my healthcare provider of any side effects or adverse reactions I may experience. I understand that this consent is voluntary and that I can withdraw from treatment at any time. By selecting below, I consent to the use of PDE5 inhibitors for the treatment of my erectile dysfunction.",
+        "options": [
+          "I have read and understand the information and I wish to proceed",
+          "I have read the information and I DO NOT wish to proceed"
+        ],
+        "disqualifyIf": [
+          "I have read the information and I DO NOT wish to proceed"
+        ],
+        "disqualifyMessage": "You have chosen not to continue. Nothing has been submitted, and you can close this page. If you change your mind, start again whenever you like."
+      }
+    ]
+  }
+}

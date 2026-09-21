@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: healthemr-postgres
+    environment:
+      POSTGRES_USER: healthemr
+      POSTGRES_PASSWORD: healthemr
+      POSTGRES_DB: healthemr
+    ports:
+      - "5455:5432"
+    volumes:
+      - healthemr-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthemr"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  healthemr-pgdata:

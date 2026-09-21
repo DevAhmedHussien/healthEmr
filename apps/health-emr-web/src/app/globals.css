@@ -1,0 +1,316 @@
+@import 'tailwindcss';
+
+/* ───────────────────────────────────────────────────────────────────────
+ * HealthEMR design tokens — Ascend Rehab.
+ *
+ * Values lifted from the AscendRehab client app's SCSS
+ * (@core/scss/base/bootstrap-extended/_variables.scss and
+ * core/colors/palette-variables.scss) so this reads as the same product:
+ * #115FAA primary, Poppins, a 0.357rem radius, and cards that carry no border
+ * at all — they sit on the pale blue ground on shadow alone. That last detail
+ * is most of what makes the Vuexy look recognisable.
+ *
+ * Light-only, matching the source app's default skin.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+@theme inline {
+  --color-background: var(--ar-body-bg);
+  --color-foreground: var(--ar-body-color);
+  --color-card: var(--ar-card-bg);
+  --color-border: var(--ar-border);
+  --color-primary: var(--ar-primary);
+  --color-muted: var(--ar-gray-50);
+  --color-muted-foreground: var(--ar-text-muted);
+  --radius-sm: var(--ar-radius-sm);
+  --radius-md: var(--ar-radius);
+  --radius-lg: var(--ar-radius-lg);
+}
+
+:root {
+  /* brand ------------------------------------------------------------- */
+  --ar-primary: #115faa;
+  --ar-primary-l1: #136cc1;
+  --ar-primary-l2: #1679d8;
+  --ar-primary-l4: #3692eb;
+  --ar-primary-d1: #0f5293;
+  --ar-primary-d2: #0c457c;
+  /* 10% tint of primary — the active-nav and hover ground */
+  --ar-primary-soft: #e7eff7;
+  --ar-secondary: #82868b;
+
+  /* semantic ---------------------------------------------------------- */
+  --ar-success: #05cd99;
+  --ar-success-soft: #e6faf4;
+  --ar-info: #00cfe8;
+  --ar-info-soft: #e5fafd;
+  --ar-warning: #fa9148;
+  --ar-warning-soft: #fef0e6;
+  --ar-danger: #fa4858;
+  --ar-danger-soft: #fee9eb;
+  --ar-yellow: #f6b816;
+
+  /* Text and glyphs *on* a soft semantic ground.
+   *
+   * Separate tokens from the semantic colours above, because the two jobs pull
+   * in opposite directions: `--ar-success` has to read as green on a white
+   * card, while text sitting on `--ar-success-soft` has to clear 4.5:1 against
+   * that tint. The source app used one value for both, which put every status
+   * badge in the console between 2.8:1 and 3.0:1.
+   *
+   *   on their own soft ground:  success 4.90   info 4.95   warning 4.78   danger 5.23
+   */
+  --ar-on-success: #017a5e;
+  --ar-on-info: #017684;
+  --ar-on-warning: #a85405;
+  --ar-on-danger: #c2182a;
+
+  /* surfaces ---------------------------------------------------------- */
+  --ar-body-bg: #f0f5fa;
+  --ar-card-bg: #ffffff;
+  --ar-gray-50: #f6f6f6;
+  --ar-gray-200: #ededed;
+  --ar-gray-300: #dae1e7;
+  --ar-gray-600: #b8c2cc;
+
+  /* type ---------------------------------------------------------------
+   *
+   * Four tiers, each darker than the source app's.
+   *
+   * AscendRehab's `$text-muted: #b9b9c3` measures 1.95:1 on white and 1.77:1 on
+   * the pale blue ground — against a WCAG AA floor of 4.5:1. It is the colour
+   * every secondary line in the console uses: record numbers, sub-labels, unit
+   * hints, date columns. Keeping it would mean most of the text on most screens
+   * is unreadable to anyone with even mild low vision, on a product whose
+   * readers are clinicians reading dosages.
+   *
+   * So the *roles* are kept — four steps from heading down to faint — and each
+   * is darkened until it clears 4.5:1 on the worse of the two grounds. The
+   * hierarchy still reads; it just no longer depends on being able to see grey
+   * on white.
+   *
+   *   on #F0F5FA:  headings 10.02   body 7.52   muted 6.22   faint 5.02
+   *   faint also clears AA on the tinted selected-row ground: 4.74 on #E7EFF7
+   */
+  --ar-body-color: #4f4e53;
+  --ar-headings: #3c3c3f;
+  --ar-text-muted: #5c5967;
+  --ar-text-faint: #6a6776;
+
+  /* lines and shape --------------------------------------------------- */
+  --ar-border: #ebe9f1;
+  --ar-border-soft: #f3f2f7;
+  --ar-radius-sm: 0.25rem;
+  --ar-radius: 0.357rem;
+  --ar-radius-card: 0.428rem;
+  --ar-radius-lg: 0.6rem;
+
+  /* elevation — cards have no border, only this ------------------------ */
+  --ar-shadow: 0 4px 24px 0 rgba(34, 41, 47, 0.1);
+  --ar-shadow-sm: 0 2px 8px 0 rgba(34, 41, 47, 0.08);
+  --ar-shadow-lg: 0 8px 32px 0 rgba(34, 41, 47, 0.12);
+  --ar-ring: 0 0 0 3px rgba(17, 95, 170, 0.14);
+}
+
+@layer base {
+  body {
+    background: var(--ar-body-bg);
+    color: var(--ar-body-color);
+    font-family:
+      var(--font-poppins),
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* The source app's scale exactly: 2 / 1.714 / 1.5 / 1.286 / 1.07 rem, and
+     weight 500 rather than 600. Poppins at 600 reads heavier than the Vuexy
+     original at the same size, which is what made earlier screens look like a
+     different product wearing the same colours. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    color: var(--ar-headings);
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+  h1 {
+    font-size: 2rem;
+  }
+  h2 {
+    font-size: 1.714rem;
+  }
+  h3 {
+    font-size: 1.5rem;
+  }
+  h4 {
+    font-size: 1.286rem;
+  }
+  h5 {
+    font-size: 1.07rem;
+  }
+  a {
+    color: var(--ar-primary);
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--ar-ring);
+    border-radius: var(--ar-radius);
+  }
+  ::selection {
+    background: var(--ar-primary-soft);
+  }
+}
+
+@layer components {
+  /* The signature: no border, generous padding, soft radius, shadow only. */
+  .ar-card {
+    background: var(--ar-card-bg);
+    border: 0;
+    border-radius: var(--ar-radius-card);
+    box-shadow: var(--ar-shadow);
+  }
+  /* `$card-spacer-y/x: 2rem` in the source. The generous inset is as much
+     of the look as the shadow is. */
+  .ar-card-pad {
+    padding: 1.5rem;
+  }
+  @media (min-width: 768px) {
+    .ar-card-pad {
+      padding: 2rem;
+    }
+  }
+
+  .ar-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .ar-table thead th {
+    background: var(--ar-gray-50);
+    color: var(--ar-headings);
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--ar-border);
+  }
+  /* The filter strip under the headers. It is part of the head so it sticks
+     with it, but it is an input row, not a label row — the uppercase tracking
+     that makes a header scannable makes a text box unreadable. */
+  .ar-table thead tr.ar-filter-row th {
+    padding: 0 0.5rem 0.5rem;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+    border-bottom: 1px solid var(--ar-border);
+  }
+  .ar-table tbody td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--ar-border-soft);
+    color: var(--ar-body-color);
+    vertical-align: middle;
+    /* One line per row. A worklist is scanned down a column, and a table where
+       every row is two lines tall halves how much of it you can see at once. */
+    white-space: nowrap;
+    max-width: 22rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ar-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  /* An opaque base so a pinned cell can inherit it. Without this the row is
+     transparent and the columns scrolling underneath show straight through. */
+  .ar-table tbody tr {
+    background: var(--ar-card-bg);
+  }
+  .ar-table tbody tr:hover {
+    background: var(--ar-body-bg);
+  }
+
+  .ar-input {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--ar-gray-300);
+    border-radius: var(--ar-radius);
+    padding: 0.593rem 1rem;
+    font-size: 0.9rem;
+    color: var(--ar-body-color);
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+  }
+  .ar-input::placeholder {
+    color: var(--ar-text-faint);
+  }
+  .ar-input:focus {
+    outline: none;
+    border-color: var(--ar-primary);
+    box-shadow: var(--ar-ring);
+  }
+
+  .ar-skeleton {
+    background: linear-gradient(90deg, var(--ar-gray-200) 0%, #f7f7f9 50%, var(--ar-gray-200) 100%);
+    background-size: 200% 100%;
+    animation: ar-shimmer 1.4s ease-in-out infinite;
+    border-radius: var(--ar-radius-sm);
+  }
+  @keyframes ar-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * Secondary detail beside the primary value, not beneath it.
+ *
+ * A worklist is scanned down a column, and a table whose every row is two lines
+ * tall halves how much of it fits on screen. The pages mark the secondary line
+ * with Tailwind's `block`; this is the one place that decides it renders inline.
+ *
+ * Deliberately outside `@layer components`. Tailwind's `.block` utility lives in
+ * the `utilities` layer, and layer order beats selector specificity — a rule in
+ * `components`, however specific, loses to it. Unlayered CSS outranks every
+ * layer, which is the only way to win this one without `!important`.
+ */
+.ar-table tbody td span.block {
+  display: inline;
+  margin-left: 0.45rem;
+}
+.ar-table tbody td span.block::before {
+  content: '·';
+  margin-right: 0.45rem;
+  color: var(--ar-text-faint);
+}
+
+/* Except inside a flex or grid cell, where the author stacked it on purpose. */
+.ar-table tbody td .flex span.block,
+.ar-table tbody td .grid span.block {
+  display: block;
+  margin-left: 0;
+}
+.ar-table tbody td .flex span.block::before,
+.ar-table tbody td .grid span.block::before {
+  content: none;
+}

@@ -1,0 +1,2151 @@
+// HealthEMR — multi-tenant telehealth EMR platform.
+//
+// Conventions, inherited from joeymed-backend so the team reads this fluently:
+//   * uuid primary keys, @db.Uuid
+//   * @db.Timestamptz(6) on every timestamp
+//   * @@map to snake_case table names
+//
+// Tenancy rule: every tenant-scoped model carries `tenantId` as the leading
+// column of its hot index. The Prisma tenant extension (src/common/prisma/
+// tenant.extension.ts) injects it into every query so a forgotten `where`
+// cannot leak across clients.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ══════════════════════════════════════════════════════════════════ enums ══
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  PROVIDER
+  PHARMACY
+  PATIENT
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  /// Off the platform, but every record they touched is retained. Distinct from
+  /// SUSPENDED, which is temporary and expects a return.
+  ARCHIVED
+}
+
+/// Where a revenue figure came from, so a number on a chart can be traced.
+enum RevenueSource {
+  /// The telehealth business told us what they charged.
+  TENANT_QUOTED
+  /// We priced it from the tenant catalogue.
+  PLATFORM_PRICED
+}
+
+/// Whether an applicant filled the public form, or a human keyed it in for them.
+enum ApplicationSource {
+  SELF_SERVE
+  SUPER_ADMIN
+}
+
+enum EarningStatus {
+  PENDING
+  APPROVED_FOR_PAYOUT
+  PAID
+  VOID
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  REFRESH_TOKEN_ROTATED
+  REFRESH_TOKEN_REVOKED
+  USER_CREATED
+  USER_UPDATED
+  USER_ROLE_CHANGED
+  USER_DEACTIVATED
+  TENANT_CREATED
+  TENANT_UPDATED
+  ENTITLEMENT_CHANGED
+  PHI_READ
+  PHI_CREATED
+  PHI_UPDATED
+  PHI_DELETED
+  REQUEST_ROUTED
+  REQUEST_DECIDED
+  PRESCRIPTION_SIGNED
+  PRESCRIPTION_VOIDED
+  ORDER_SUBMITTED
+  ORDER_STATUS_CHANGED
+  BREAK_THE_GLASS
+  ADMIN_CREATED
+  INVITE_SENT
+  INVITE_ACCEPTED
+  APPLICATION_DECIDED
+  ACCOUNT_SUSPENDED
+  ACCOUNT_REACTIVATED
+  PROVIDER_REASSIGNED
+  /// Super Admin reading a tenant's data read-only. Logged like break-the-glass.
+  VIEW_AS_TENANT
+  /// An integration credential was minted. The key itself is never recorded.
+  API_KEY_ISSUED
+  API_KEY_REVOKED
+  /// An outbound endpoint was registered, repointed or removed. Named in its
+  /// own right because it decides where a patient's information is sent.
+  WEBHOOK_CHANGED
+}
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  REVOKED
+}
+
+enum MedicationForm {
+  INJECTABLE
+  ORAL
+  TOPICAL
+  NASAL
+  OTHER
+}
+
+enum RequestStatus {
+  RECEIVED
+  PENDING_ASSIGNMENT
+  ASSIGNED
+  IN_REVIEW
+  INFO_REQUESTED
+  APPROVED
+  DENIED
+  EXPIRED
+  CANCELLED
+}
+
+enum ItemDecision {
+  PENDING
+  APPROVED
+  MODIFIED
+  DENIED
+}
+
+enum RoutingOutcome {
+  ASSIGNED
+  /// Eligible, but another provider was a better fit (usually lighter load).
+  NOT_SELECTED
+  NO_LICENSE
+  LICENSE_EXPIRED
+  STATE_DISALLOWS_ASYNC
+  NOT_QUALIFIED
+  NOT_ON_TENANT_ROSTER
+  AT_CAPACITY
+  NOT_ACCEPTING
+}
+
+/// How a medication is administered.
+enum AdministrationRoute {
+  SUBCUTANEOUS
+  INTRAMUSCULAR
+  ORAL
+  SUBLINGUAL
+  TOPICAL
+  NASAL
+  OTHER
+}
+
+enum PrescriptionStatus {
+  SIGNED
+  TRANSMITTED
+  DISPENSED
+  SHIPPED
+  DELIVERED
+  VOIDED
+}
+
+/// Where an order's sell price came from.
+enum SellPriceSource {
+  /// The pharmacy product's own price. The default for every client.
+  PRODUCT
+  /// A rate negotiated with this particular client business.
+  TENANT_OVERRIDE
+}
+
+enum PharmacyOrderStatus {
+  QUEUED
+  SUBMITTED
+  ACKNOWLEDGED
+  IN_FULFILMENT
+  SHIPPED
+  DELIVERED
+  REJECTED
+  CANCELLED
+}
+
+enum PharmacyPlatform {
+  LIFEFILE
+  GENERIC_HTTP
+}
+
+enum AuthStrategy {
+  BEARER
+  API_KEY_HEADER
+  HMAC
+  BASIC
+}
+
+enum SubmissionStatus {
+  IN_PROGRESS
+  SUBMITTED
+}
+
+enum EncounterType {
+  ASYNC_REVIEW
+  FOLLOW_UP
+  NOTE
+}
+
+enum EncounterStatus {
+  OPEN
+  CLOSED
+}
+
+enum AllergySeverity {
+  MILD
+  MODERATE
+  SEVERE
+}
+
+enum AllergyType {
+  DRUG
+  FOOD
+  ENVIRONMENTAL
+  OTHER
+}
+
+enum ClinicalStatus {
+  ACTIVE
+  INACTIVE
+  RESOLVED
+}
+
+enum MedicationSource {
+  PATIENT_REPORTED
+  PRESCRIBED
+  IMPORTED
+}
+
+/// What a thread is for. Kind decides who may join and whether it may carry PHI.
+enum ChatThreadKind {
+  /// Patient and their treating provider.
+  PATIENT_PROVIDER
+  /// Pharmacy raising a problem on a specific order, with Super Admin.
+  PHARMACY_SUPPORT
+  /// Provider raising a problem on a specific case, with Super Admin.
+  PROVIDER_SUPPORT
+  /// Staff-to-staff, not tied to a patient. See the PHI warning on ChatThread.
+  GENERAL
+}
+
+enum ChatThreadStatus {
+  OPEN
+  ARCHIVED
+  LOCKED
+}
+
+enum ChatMessageKind {
+  TEXT
+  MEDIA
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WEBHOOK
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  /// Suppressed on purpose — e.g. no consent on record for that channel.
+  SKIPPED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  INFO_REQUESTED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// Proof a pharmacy is legally allowed to dispense. Which of these are required
+/// depends on what they dispense and where, so the review checklist is built
+/// from the application rather than hardcoded.
+enum PharmacyDocumentKind {
+  STATE_PHARMACY_LICENSE
+  NONRESIDENT_PHARMACY_LICENSE
+  DEA_REGISTRATION
+  NCPDP_ASSIGNMENT
+  NABP_VAWD_ACCREDITATION
+  STERILE_COMPOUNDING_503A
+  OUTSOURCING_FACILITY_503B
+  FDA_REGISTRATION
+  LIABILITY_INSURANCE
+  BUSINESS_LICENSE
+  W9
+  CERTIFICATE_OF_ANALYSIS
+  OTHER
+}
+
+enum ProviderDocumentKind {
+  STATE_MEDICAL_LICENSE
+  DEA_REGISTRATION
+  BOARD_CERTIFICATION
+  MALPRACTICE_INSURANCE
+  CURRICULUM_VITAE
+  GOVERNMENT_ID
+  NPI_CONFIRMATION
+  OTHER
+}
+
+/// How a state licence was confirmed.
+enum LicenceVerification {
+  /// A licence document for that state was uploaded and accepted.
+  DOCUMENT
+  /// Checked against the state board directly by a person, with a note saying so.
+  MANUAL
+}
+
+enum DocumentReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum DocumentKind {
+  ID_PHOTO
+  RX_PHOTO
+  LAB_REPORT
+  CONSENT
+  OTHER
+}
+
+// ═══════════════════════════════════════════════════════════════ tenancy ══
+
+/// A client business. `slug` is the `company` field in the partner payload.
+model Tenant {
+  id               String       @id @default(uuid()) @db.Uuid
+  slug             String       @unique @db.VarChar(120)
+  name             String       @db.VarChar(200)
+  status           TenantStatus @default(ACTIVE)
+  contactEmail     String       @db.VarChar(255)
+  ownerName        String?      @db.VarChar(200)
+  contactPhone     String?      @db.VarChar(40)
+  billingPlan      String?      @db.VarChar(80)
+  /// How many times this client may re-send a prescription on one visit.
+  ///
+  /// Contractual, so it sits on the account rather than in code. Two is the
+  /// default: one correction for a genuine mistake, one more for the mistake
+  /// in the correction. Past that a resend is a new clinical question and
+  /// belongs in a new visit.
+  rxRetryLimit     Int          @default(2)
+  archivedAt       DateTime?    @db.Timestamptz(6)
+  archivedReason   String?
+  archivedByUserId String?      @db.Uuid
+  /// States this tenant is commercially allowed to sell into. Empty = no limit
+  /// beyond what provider licensing and StatePolicy already enforce.
+  allowedStates    String[]     @default([])
+  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+
+  users             User[]
+  apiKeys           TenantApiKey[]
+  webhooks          TenantWebhook[]
+  categories        TenantCategory[]
+  medications       TenantMedication[]
+  pharmacies        TenantPharmacy[]
+  providers         TenantProvider[]
+  patients          TenantPatient[]
+  encounters        Encounter[]
+  submissions       QaSubmission[]
+  requests          PrescriptionRequest[]
+  orders            PharmacyOrder[]
+  chatThreads       ChatThread[]
+  invoices          Invoice[]
+  auditLogs         AuditLog[]
+  primaryProviders  ProviderProfile[]     @relation("ProviderPrimaryTenant")
+  primaryPharmacies Pharmacy[]            @relation("PharmacyPrimaryTenant")
+  providerEarnings  ProviderEarning[]
+  prescriptions     Prescription[]
+
+  @@index([status], map: "tenants_status_idx")
+  @@map("tenants")
+}
+
+model TenantApiKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  name       String    @db.VarChar(120)
+  /// Argon2 hash. The plaintext key is shown once, at creation, and never stored.
+  keyHash    String    @unique
+  /// Non-secret lookup prefix so a presented key can find its row in one query.
+  keyPrefix  String    @unique @db.VarChar(16)
+  scopes     String[]  @default([])
+  lastUsedAt DateTime? @db.Timestamptz(6)
+  expiresAt  DateTime? @db.Timestamptz(6)
+  revokedAt  DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "tenant_api_keys_tenant_idx")
+  @@map("tenant_api_keys")
+}
+
+/// Where a client business wants to be told what happened, as it happens.
+///
+/// One row per endpoint, because a client commonly has more than one: a CRM
+/// that shows a salesperson where a visit got to, and a fulfilment system that
+/// only cares about shipping. Each subscribes to its own events, so neither is
+/// sent traffic it has no use for.
+model TenantWebhook {
+  id           String            @id @default(uuid()) @db.Uuid
+  tenantId     String            @db.Uuid
+  /// What this endpoint is for, in the operator's words. Two URLs at the same
+  /// host are otherwise indistinguishable in a list.
+  name         String            @db.VarChar(120)
+  url          String            @db.VarChar(500)
+  /// The bearer token their endpoint expects from us, encrypted at rest. Never
+  /// readable back through the API — it can be replaced, not retrieved.
+  authCipher   String
+  /// Signing secret for the request signature, so they can prove the body came
+  /// from us and was not altered. Generated here; shown once at creation.
+  secretRef    String            @db.VarChar(255)
+  events       String[]          @default([])
+  isActive     Boolean           @default(true)
+  /// Consecutive failures. Reset by the first success.
+  failureCount Int               @default(0)
+  lastAttemptAt DateTime?        @db.Timestamptz(6)
+  lastSuccessAt DateTime?        @db.Timestamptz(6)
+  lastError     String?
+  /// Set when the platform stopped trying. A dead endpoint is switched off
+  /// rather than retried forever, and the reason says which.
+  disabledAt     DateTime?       @db.Timestamptz(6)
+  disabledReason String?
+  createdAt    DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([tenantId, isActive], map: "tenant_webhooks_tenant_active_idx")
+  @@map("tenant_webhooks")
+}
+
+model WebhookDelivery {
+  id             String        @id @default(uuid()) @db.Uuid
+  webhookId      String        @db.Uuid
+  event          String        @db.VarChar(120)
+  payload        Json
+  responseStatus Int?
+  responseBody   String?
+  attempts       Int           @default(0)
+  deliveredAt    DateTime?     @db.Timestamptz(6)
+  nextRetryAt    DateTime?     @db.Timestamptz(6)
+  /// Why it has not been delivered. Their message, not ours.
+  lastError      String?
+  /// The visit this was about, so a delivery can be read from the visit and a
+  /// visit's whole outbound history read back.
+  requestId      String?       @db.Uuid
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  webhook        TenantWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([nextRetryAt], map: "webhook_deliveries_retry_idx")
+  @@index([webhookId, createdAt], map: "webhook_deliveries_webhook_created_idx")
+  @@map("webhook_deliveries")
+}
+
+/// Which visitTypes this tenant may submit. Gate for "Company does not have that visit type".
+model TenantCategory {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  categoryId String   @db.Uuid
+  isEnabled  Boolean  @default(true)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, categoryId], map: "tenant_categories_unique")
+  @@map("tenant_categories")
+}
+
+/// Which medIds this tenant may order. Gate for "No match for {medId}".
+model TenantMedication {
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @db.Uuid
+  medicationId String     @db.Uuid
+  isEnabled    Boolean    @default(true)
+  /// A rate negotiated with this client for this medication, in integer cents.
+  /// Overrides the pharmacy product's `sellPriceCents` wherever it is set, so a
+  /// client keeps their price whichever contracted pharmacy fills the order.
+  /// Null means they pay the standard price.
+  priceCents   Int?
+  createdAt    DateTime   @default(now()) @db.Timestamptz(6)
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, medicationId], map: "tenant_medications_unique")
+  @@map("tenant_medications")
+}
+
+/// Which pharmacies this tenant may name. Gate for "Pharmacy mismatch in patientPreference".
+model TenantPharmacy {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @db.Uuid
+  pharmacyId         String   @db.Uuid
+  isDefault          Boolean  @default(false)
+  /// This tenant's own account identifier at that pharmacy.
+  externalAccountRef String?  @db.VarChar(255)
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pharmacy           Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, pharmacyId], map: "tenant_pharmacies_unique")
+  @@map("tenant_pharmacies")
+}
+
+/// The provider roster this tenant may draw on.
+model TenantProvider {
+  id           String          @id @default(uuid()) @db.Uuid
+  tenantId     String          @db.Uuid
+  providerId   String          @db.Uuid
+  contractedAt DateTime        @default(now()) @db.Timestamptz(6)
+  endedAt      DateTime?       @db.Timestamptz(6)
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider     ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, providerId], map: "tenant_providers_unique")
+  @@map("tenant_providers")
+}
+
+// ══════════════════════════════════════════════════════ identity & audit ══
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String
+  role            Role      @default(PATIENT)
+  /// Required for ADMIN, null for every other role.
+  tenantId        String?   @db.Uuid
+  /// Which pharmacy this account works for. Staff were previously matched to a
+  /// pharmacy by comparing their email to the pharmacy's contact address, which
+  /// broke the moment either changed and silently locked the account out.
+  pharmacyId      String?   @db.Uuid
+  firstName       String    @db.VarChar(100)
+  lastName        String    @db.VarChar(100)
+  phone           String?   @db.VarChar(30)
+  avatarUrl       String?   @db.VarChar(500)
+  isEmailVerified Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  mfaEnabled      Boolean   @default(false)
+  lastLoginAt     DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  pharmacy                Pharmacy?                @relation("PharmacyStaff", fields: [pharmacyId], references: [id], onDelete: SetNull)
+  providerProfile         ProviderProfile?
+  patient                 Patient?
+  refreshSessions         RefreshSession[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  auditLogs               AuditLog[]               @relation("AuditActor")
+  chatMessages            ChatMessage[]
+  chatParticipations      ChatParticipant[]
+  notifications           Notification[]
+  invites                 UserInvite[]             @relation("InviteRecipient")
+  invitesIssued           UserInvite[]             @relation("InviteIssuedBy")
+  providerNotes           ProviderNote[]
+  createdTemplates        QuestionnaireTemplate[]
+
+  @@index([role], map: "users_role_idx")
+  @@index([tenantId], map: "users_tenant_idx")
+  @@index([pharmacyId], map: "users_pharmacy_idx")
+  @@map("users")
+}
+
+model RefreshSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  userAgent String?
+  ip        String?   @db.VarChar(64)
+  expiresAt DateTime  @db.Timestamptz(6)
+  revokedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "refresh_sessions_user_idx")
+  @@index([expiresAt], map: "refresh_sessions_expires_idx")
+  @@map("refresh_sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(6)
+  usedAt    DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(6)
+  usedAt    DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
+}
+
+/// Append-only and hash-chained: each row's `hash` covers its own content plus
+/// the previous row's hash, so a deleted or edited entry breaks the chain.
+model AuditLog {
+  id          String      @id @default(uuid()) @db.Uuid
+  /// Navigational only. Both foreign keys are SET NULL on delete, so neither is
+  /// part of the chain hash — a deleted account must not be able to rewrite
+  /// history by proxy. The immutable copies below are what the hash covers.
+  tenantId    String?     @db.Uuid
+  actorUserId String?     @db.Uuid
+  /// Who acted and which account they acted for, as text, frozen at write time.
+  /// Attribution has to outlive the records it refers to: the question "who did
+  /// this" is asked years later, often precisely because the account is gone.
+  actorEmail  String?     @db.VarChar(255)
+  tenantSlug  String?     @db.VarChar(120)
+  actorRole   Role?
+  action      AuditAction
+  entityType  String      @db.VarChar(120)
+  entityId    String?     @db.VarChar(120)
+  patientId   String?     @db.Uuid
+  before      Json?
+  after       Json?
+  ip          String?     @db.VarChar(64)
+  userAgent   String?
+  requestId   String?     @db.VarChar(64)
+  /// Monotonic per-chain position. Gaps are as suspicious as a bad hash.
+  sequence    BigInt
+  prevHash    String?     @db.VarChar(64)
+  hash        String      @db.VarChar(64)
+  createdAt   DateTime    @default(now()) @db.Timestamptz(6)
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  actor  User?   @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([sequence], map: "audit_logs_sequence_unique")
+  @@index([tenantId, createdAt], map: "audit_logs_tenant_created_idx")
+  @@index([patientId, createdAt], map: "audit_logs_patient_created_idx")
+  @@index([action], map: "audit_logs_action_idx")
+  @@map("audit_logs")
+}
+
+/// Machine identity for internal services. Replaces the blanket admin API key.
+model ServiceAccount {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String    @unique @db.VarChar(120)
+  keyHash    String    @unique
+  keyPrefix  String    @unique @db.VarChar(16)
+  scopes     String[]  @default([])
+  lastUsedAt DateTime? @db.Timestamptz(6)
+  revokedAt  DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@map("service_accounts")
+}
+
+// ════════════════════════════════════════════════════════ patient record ══
+
+/// The person. Platform-level and deduplicated across tenants, because one human
+/// may buy from two client businesses and must not end up with two charts.
+model Patient {
+  id                String    @id @default(uuid()) @db.Uuid
+  mrn               String    @unique @db.VarChar(40)
+  userId            String?   @unique @db.Uuid
+  firstName         String    @db.VarChar(100)
+  lastName          String    @db.VarChar(100)
+  /// Encrypted at rest by the PHI extension.
+  dob               String    @db.VarChar(255)
+  sexAtBirth        Sex
+  phone             String    @db.VarChar(30)
+  email             String    @db.VarChar(255)
+  addressLine1      String    @db.VarChar(200)
+  addressLine2      String?   @db.VarChar(200)
+  city              String    @db.VarChar(120)
+  /// Where the patient lives. Not necessarily where they were when they submitted.
+  residenceState    String    @db.VarChar(2)
+  postalCode        String    @db.VarChar(20)
+  idPhotoKey        String?   @db.VarChar(512)
+  idPhotoVerifiedAt DateTime? @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user                 User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenantLinks          TenantPatient[]
+  encounters           Encounter[]
+  vitals               Vitals[]
+  allergies            Allergy[]
+  conditions           Condition[]
+  medications          PatientMedication[]
+  labResults           LabResult[]
+  documents            PatientDocument[]
+  submissions          QaSubmission[]
+  requests             PrescriptionRequest[]
+  prescriptions        Prescription[]
+  chatThreads          ChatThread[]
+  communicationConsent CommunicationConsent?
+  invoices             Invoice[]
+
+  /// The dedup key. Two submissions with the same phone and dob are one person.
+  @@unique([phone, dob], map: "patients_phone_dob_unique")
+  @@index([email], map: "patients_email_idx")
+  @@map("patients")
+}
+
+/// The relationship between a tenant and a person. Tenants read only through this.
+model TenantPatient {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @db.Uuid
+  patientId         String   @db.Uuid
+  /// The tenant's own id for this patient (e.g. a GHL contact id).
+  externalContactId String?  @db.VarChar(255)
+  firstSeenAt       DateTime @default(now()) @db.Timestamptz(6)
+  isActive          Boolean  @default(true)
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient           Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, patientId], map: "tenant_patients_unique")
+  @@index([tenantId, isActive], map: "tenant_patients_tenant_active_idx")
+  @@map("tenant_patients")
+}
+
+model Encounter {
+  id             String          @id @default(uuid()) @db.Uuid
+  tenantId       String          @db.Uuid
+  patientId      String          @db.Uuid
+  providerId     String?         @db.Uuid
+  type           EncounterType   @default(ASYNC_REVIEW)
+  status         EncounterStatus @default(OPEN)
+  occurredAt     DateTime        @db.Timestamptz(6)
+  chiefComplaint String?         @db.VarChar(500)
+  summary        String?
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient  Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider ProviderProfile? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  vitals   Vitals[]
+  notes    ProviderNote[]
+
+  @@index([tenantId, occurredAt], map: "encounters_tenant_occurred_idx")
+  @@index([patientId, occurredAt], map: "encounters_patient_occurred_idx")
+  @@map("encounters")
+}
+
+model Vitals {
+  id               String   @id @default(uuid()) @db.Uuid
+  patientId        String   @db.Uuid
+  encounterId      String?  @db.Uuid
+  heightIn         Decimal? @db.Decimal(5, 2)
+  weightLbs        Decimal? @db.Decimal(6, 2)
+  /// Derived in the service from height and weight. Never accepted from a client.
+  bmi              Decimal? @db.Decimal(5, 2)
+  systolic         Int?
+  diastolic        Int?
+  heartRate        Int?
+  temperatureF     Decimal? @db.Decimal(4, 1)
+  recordedAt       DateTime @db.Timestamptz(6)
+  recordedByUserId String?  @db.Uuid
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, recordedAt], map: "vitals_patient_recorded_idx")
+  @@map("vitals")
+}
+
+model Allergy {
+  id               String          @id @default(uuid()) @db.Uuid
+  patientId        String          @db.Uuid
+  substance        String          @db.VarChar(200)
+  reactionText     String?
+  severity         AllergySeverity @default(MILD)
+  type             AllergyType     @default(DRUG)
+  onsetDate        DateTime?       @db.Timestamptz(6)
+  status           ClinicalStatus  @default(ACTIVE)
+  recordedByUserId String?         @db.Uuid
+  createdAt        DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
+  patient          Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status], map: "allergies_patient_status_idx")
+  @@map("allergies")
+}
+
+model Condition {
+  id               String         @id @default(uuid()) @db.Uuid
+  patientId        String         @db.Uuid
+  code             String?        @db.VarChar(40)
+  display          String         @db.VarChar(300)
+  onsetDate        DateTime?      @db.Timestamptz(6)
+  resolvedDate     DateTime?      @db.Timestamptz(6)
+  clinicalStatus   ClinicalStatus @default(ACTIVE)
+  recordedByUserId String?        @db.Uuid
+  createdAt        DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+  patient          Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, clinicalStatus], map: "conditions_patient_status_idx")
+  @@map("conditions")
+}
+
+model PatientMedication {
+  id           String           @id @default(uuid()) @db.Uuid
+  patientId    String           @db.Uuid
+  medicationId String?          @db.Uuid
+  nameText     String           @db.VarChar(250)
+  dose         String?          @db.VarChar(120)
+  route        String?          @db.VarChar(80)
+  frequency    String?          @db.VarChar(120)
+  startDate    DateTime?        @db.Timestamptz(6)
+  endDate      DateTime?        @db.Timestamptz(6)
+  status       ClinicalStatus   @default(ACTIVE)
+  source       MedicationSource @default(PATIENT_REPORTED)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
+
+  patient    Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  medication Medication? @relation(fields: [medicationId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, status], map: "patient_medications_patient_status_idx")
+  @@map("patient_medications")
+}
+
+/// From the partner /lab/receiveLabResults endpoint. A FHIR Observation in spirit.
+model LabResult {
+  id              String    @id @default(uuid()) @db.Uuid
+  patientId       String    @db.Uuid
+  submissionId    String?   @db.Uuid
+  screeningDate   DateTime  @db.Timestamptz(6)
+  testName        String    @db.VarChar(200)
+  testResult      String    @db.VarChar(200)
+  testResultUnits String?   @db.VarChar(80)
+  refRange        String?   @db.VarChar(120)
+  /// H / L / N / N_A — derived from result vs range, not trusted from the caller.
+  statusIndicator String    @db.VarChar(8)
+  reportDate      DateTime? @db.Timestamptz(6)
+  sampleSource    String?   @db.VarChar(40)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+
+  patient    Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  submission QaSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, screeningDate], map: "lab_results_patient_screening_idx")
+  @@map("lab_results")
+}
+
+/// Clinical notes are amended, never edited or deleted.
+model ProviderNote {
+  id           String    @id @default(uuid()) @db.Uuid
+  encounterId  String    @db.Uuid
+  providerId   String    @db.Uuid
+  authorUserId String    @db.Uuid
+  body         String
+  isAmendment  Boolean   @default(false)
+  amendsNoteId String?   @db.Uuid
+  signedAt     DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+
+  encounter Encounter       @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  provider  ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  author    User            @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  amends    ProviderNote?   @relation("NoteAmendment", fields: [amendsNoteId], references: [id], onDelete: SetNull)
+  amendedBy ProviderNote[]  @relation("NoteAmendment")
+
+  @@index([encounterId, createdAt], map: "provider_notes_encounter_created_idx")
+  @@map("provider_notes")
+}
+
+model PatientDocument {
+  id               String       @id @default(uuid()) @db.Uuid
+  patientId        String       @db.Uuid
+  kind             DocumentKind @default(OTHER)
+  bucket           String       @db.VarChar(255)
+  objectKey        String       @db.VarChar(512)
+  mime             String       @db.VarChar(120)
+  size             Int
+  fileName         String?      @db.VarChar(255)
+  uploadedByUserId String?      @db.Uuid
+  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+  patient          Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, kind], map: "patient_documents_patient_kind_idx")
+  @@map("patient_documents")
+}
+
+// ═══════════════════════════════════════════ practitioners & licensure ══
+
+model ProviderProfile {
+  id                  String        @id @default(uuid()) @db.Uuid
+  userId              String        @unique @db.Uuid
+  npi                 String?       @unique @db.VarChar(20)
+  credentials         String?       @db.VarChar(80)
+  specialties         String[]      @default([])
+  bio                 String?
+  signatureImageKey   String?       @db.VarChar(512)
+  deaNumber           String?       @db.VarChar(40)
+  isAcceptingRequests Boolean       @default(true)
+  maxOpenRequests     Int           @default(25)
+  /// The admin account this provider is "assigned" to for directory and
+  /// reporting. They may still be contracted to others via TenantProvider —
+  /// a clinician licensed in California covers every client selling there.
+  primaryTenantId     String?       @db.Uuid
+  status              AccountStatus @default(ACTIVE)
+  suspendedAt         DateTime?     @db.Timestamptz(6)
+  suspendedReason     String?
+  suspendedByUserId   String?       @db.Uuid
+  archivedAt          DateTime?     @db.Timestamptz(6)
+  archivedReason      String?
+  archivedByUserId    String?       @db.Uuid
+  createdAt           DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  primaryTenant   Tenant?               @relation("ProviderPrimaryTenant", fields: [primaryTenantId], references: [id], onDelete: SetNull)
+  earnings        ProviderEarning[]
+  feeSchedules    ProviderFeeSchedule[]
+  licenses        ProviderLicense[]
+  categories      ProviderCategory[]
+  tenantLinks     TenantProvider[]
+  encounters      Encounter[]
+  notes           ProviderNote[]
+  requests        PrescriptionRequest[]
+  /// Individual medications this clinician is answering for, on visits shared
+  /// with a colleague as well as on visits that are wholly theirs.
+  assignedLines   PrescriptionRequestItem[] @relation("AssignedLines")
+  prescriptions   Prescription[]
+  routingAttempts RoutingAttempt[]
+  application     ProviderApplication?
+
+  @@index([isAcceptingRequests], map: "provider_profiles_accepting_idx")
+  @@index([primaryTenantId, status], map: "provider_profiles_primary_status_idx")
+  @@map("provider_profiles")
+}
+
+/// One row per state. A row rather than a string array because the licence
+/// number and expiry differ per state — and an expired row must drop the
+/// provider out of routing without anyone remembering to flip a flag.
+model ProviderLicense {
+  id            String          @id @default(uuid()) @db.Uuid
+  providerId    String          @db.Uuid
+  state         String          @db.VarChar(2)
+  licenseNumber String          @db.VarChar(80)
+  issuedAt      DateTime?       @db.Timestamptz(6)
+  expiresAt     DateTime        @db.Timestamptz(6)
+  status        LicenseStatus   @default(ACTIVE)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
+  provider      ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, state], map: "provider_licenses_provider_state_unique")
+  @@index([state, status, expiresAt], map: "provider_licenses_routing_idx")
+  @@map("provider_licenses")
+}
+
+model ProviderCategory {
+  id         String          @id @default(uuid()) @db.Uuid
+  providerId String          @db.Uuid
+  categoryId String          @db.Uuid
+  provider   ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category   Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, categoryId], map: "provider_categories_unique")
+  @@map("provider_categories")
+}
+
+/// The second routing gate. A valid licence is necessary but not sufficient:
+/// most states require a real-time interaction before prescribing, and some say
+/// explicitly that a forwarded online history is neither a relationship nor
+/// store-and-forward. Maintained by Super Admin on legal advice.
+model StatePolicy {
+  id                         String    @id @default(uuid()) @db.Uuid
+  state                      String    @unique @db.VarChar(2)
+  allowsAsyncPrescribing     Boolean   @default(false)
+  requiresSynchronousInitial Boolean   @default(true)
+  requiresPriorInPerson      Boolean   @default(false)
+  notes                      String?
+  reviewedAt                 DateTime? @db.Timestamptz(6)
+  reviewedBy                 String?   @db.VarChar(200)
+  updatedAt                  DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("state_policies")
+}
+
+// ═══════════════════════════════════════════════════════════════ catalog ══
+
+/// `slug` is the partner payload's `visitType`.
+model Category {
+  id               String   @id @default(uuid()) @db.Uuid
+  slug             String   @unique @db.VarChar(120)
+  name             String   @db.VarChar(200)
+  description      String?
+  isFollowUp       Boolean  @default(false)
+  parentCategoryId String?  @db.Uuid
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  parent               Category?               @relation("CategoryFollowUp", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  followUps            Category[]              @relation("CategoryFollowUp")
+  medications          CategoryMedication[]
+  providers            ProviderCategory[]
+  tenants              TenantCategory[]
+  templates            QuestionnaireTemplate[]
+  pharmacyCategories   PharmacyCategory[]
+  providerFeeSchedules ProviderFeeSchedule[]
+  submissions          QaSubmission[]
+  requests             PrescriptionRequest[]
+
+  @@index([isActive, sortOrder], map: "categories_active_sort_idx")
+  @@map("categories")
+}
+
+model Medication {
+  id           String         @id @default(uuid()) @db.Uuid
+  /// The stable public identifier tenants send as patientPreference[].medId.
+  medId        String         @unique @db.VarChar(120)
+  name         String         @db.VarChar(250)
+  genericName  String?        @db.VarChar(250)
+  strength     String?        @db.VarChar(120)
+  form         MedicationForm @default(OTHER)
+  route        String?        @db.VarChar(80)
+  ndc          String?        @db.VarChar(40)
+  isCompounded Boolean        @default(false)
+  isBranded    Boolean        @default(false)
+  isControlled Boolean        @default(false)
+  deaSchedule  String?        @db.VarChar(8)
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+
+  categories         CategoryMedication[]
+  tenants            TenantMedication[]
+  pharmacyProducts   PharmacyProduct[]
+  formularyItems     PharmacyFormularyItem[]
+  requestItems       PrescriptionRequestItem[]
+  prescriptions      Prescription[]
+  patientMedications PatientMedication[]
+  invoiceLines       InvoiceLine[]
+
+  @@index([isActive], map: "medications_active_idx")
+  @@map("medications")
+}
+
+/// Explicit join so "both directions must be editable" is one table written
+/// from either the category screen or the medication screen.
+model CategoryMedication {
+  id           String     @id @default(uuid()) @db.Uuid
+  categoryId   String     @db.Uuid
+  medicationId String     @db.Uuid
+  sortOrder    Int        @default(0)
+  isDefault    Boolean    @default(false)
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, medicationId], map: "category_medications_unique")
+  @@map("category_medications")
+}
+
+// ══════════════════════════════════════════ questionnaires & prescribing ══
+
+model QuestionnaireTemplate {
+  id              String   @id @default(uuid()) @db.Uuid
+  categoryId      String   @db.Uuid
+  version         Int
+  schemaJson      Json
+  isActive        Boolean  @default(true)
+  createdByUserId String?  @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  category    Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdBy   User?          @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  submissions QaSubmission[]
+
+  @@unique([categoryId, version], map: "questionnaire_templates_category_version_unique")
+  @@index([categoryId, isActive], map: "questionnaire_templates_category_active_idx")
+  @@map("questionnaire_templates")
+}
+
+model QaSubmission {
+  id                       String           @id @default(uuid()) @db.Uuid
+  tenantId                 String           @db.Uuid
+  patientId                String           @db.Uuid
+  categoryId               String           @db.Uuid
+  templateId               String?          @db.Uuid
+  templateVersion          Int
+  status                   SubmissionStatus @default(SUBMITTED)
+  /// Encrypted at rest. The most sensitive free text in the system.
+  valuesJson               Json?
+  /// Where the patient physically was at submission. Licensure follows the body,
+  /// not the mailing address, so routing reads this and never residenceState.
+  patientStateAtSubmission String           @db.VarChar(2)
+  testToTreat              Boolean          @default(false)
+  submittedAt              DateTime         @default(now()) @db.Timestamptz(6)
+  createdAt                DateTime         @default(now()) @db.Timestamptz(6)
+
+  tenant     Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient    Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  category   Category               @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  template   QuestionnaireTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  answers    QaAnswer[]
+  labResults LabResult[]
+  request    PrescriptionRequest?
+
+  @@index([tenantId, submittedAt], map: "qa_submissions_tenant_submitted_idx")
+  @@index([patientId, submittedAt], map: "qa_submissions_patient_submitted_idx")
+  /// Geography: orders by the state the patient was in.
+  @@index([tenantId, patientStateAtSubmission], map: "qa_submissions_tenant_state_idx")
+  @@map("qa_submissions")
+}
+
+model QaAnswer {
+  id           String       @id @default(uuid()) @db.Uuid
+  submissionId String       @db.Uuid
+  questionId   String       @db.VarChar(120)
+  questionText String?
+  /// Encrypted at rest.
+  valueJson    Json
+  answeredAt   DateTime     @default(now()) @db.Timestamptz(6)
+  submission   QaSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, questionId], map: "qa_answers_submission_question_unique")
+  @@map("qa_answers")
+}
+
+model PrescriptionRequest {
+  id                  String        @id @default(uuid()) @db.Uuid
+  tenantId            String        @db.Uuid
+  /// The partner's masterId. Unique per tenant — this is the idempotency key.
+  externalMasterId    String        @db.VarChar(255)
+  qaSubmissionId      String        @unique @db.Uuid
+  patientId           String        @db.Uuid
+  categoryId          String        @db.Uuid
+  requestedPharmacyId String?       @db.Uuid
+  status              RequestStatus @default(RECEIVED)
+  assignedProviderId  String?       @db.Uuid
+  assignedAt          DateTime?     @db.Timestamptz(6)
+  reviewStartedAt     DateTime?     @db.Timestamptz(6)
+  decidedAt           DateTime?     @db.Timestamptz(6)
+  denialReason        String?
+  expiresAt           DateTime?     @db.Timestamptz(6)
+  /// The clinician sent the patient elsewhere rather than prescribing.
+  ///
+  /// Distinct from a refusal. A refusal says "not this medication"; a referral
+  /// says "not online, and not by me" — an in-person examination, a specialist,
+  /// an emergency department. A referred visit is closed to resubmission,
+  /// because the answer was not about the medication that was asked for.
+  referredAt          DateTime?     @db.Timestamptz(6)
+  referralReason      String?
+  /// How many times a client has re-sent a prescription on this visit.
+  ///
+  /// A resend is a second bite at a clinical decision that has already been
+  /// made, so it is contractually capped rather than merely discouraged. The
+  /// cap lives on the tenant; this is the count against it.
+  rxRetryCount        Int           @default(0)
+  /// Withdrawn by the platform owner at the client's request.
+  ///
+  /// A visit that happened cannot be made not to have happened: a clinician may
+  /// have read the chart, a pharmacy may have shipped. So this hides the record
+  /// from every list and takes it out of every revenue and profit figure, and
+  /// leaves the row where it is. Only a SUPER_ADMIN may set it, and never
+  /// without a reason.
+  voidedAt            DateTime?     @db.Timestamptz(6)
+  voidedReason        String?
+  voidedByUserId      String?       @db.Uuid
+  createdAt           DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  submission        QaSubmission              @relation(fields: [qaSubmissionId], references: [id], onDelete: Cascade)
+  patient           Patient                   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  category          Category                  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  assignedProvider  ProviderProfile?          @relation(fields: [assignedProviderId], references: [id], onDelete: SetNull)
+  requestedPharmacy Pharmacy?                 @relation(fields: [requestedPharmacyId], references: [id], onDelete: SetNull)
+  items             PrescriptionRequestItem[]
+  routingAttempts   RoutingAttempt[]
+  providerEarnings  ProviderEarning[]
+  prescriptions     Prescription[]
+
+  @@unique([tenantId, externalMasterId], map: "prescription_requests_tenant_master_unique")
+  @@index([status, createdAt], map: "prescription_requests_status_created_idx")
+  /// Every list filters `voidedAt IS NULL` before anything else.
+  @@index([voidedAt], map: "prescription_requests_voided_idx")
+  @@index([assignedProviderId, status], map: "prescription_requests_provider_status_idx")
+  /// Covers the provider queue's keyset page.
+  ///
+  /// Column order is deliberate: equality on assignedProviderId first, then the
+  /// sort key. Putting `status` second — the obvious-looking choice — breaks it,
+  /// because `status IN (...)` is a range predicate and Postgres cannot use the
+  /// index for ordering past a range. Status is cheap to filter on the heap;
+  /// sorting a long queue is not.
+  @@index([assignedProviderId, createdAt, id], map: "prescription_requests_queue_keyset_idx")
+  @@index([externalMasterId], map: "prescription_requests_master_idx")
+  /// Provider leaderboard: approved, refused, rate, time-to-decision.
+  @@index([assignedProviderId, status, decidedAt], map: "prescription_requests_provider_stats_idx")
+  @@index([tenantId, status], map: "prescription_requests_tenant_status_idx")
+  @@map("prescription_requests")
+}
+
+/// One row per patientPreference entry. A provider may approve two lines and
+/// deny a third, and each approved line becomes its own Prescription — possibly
+/// at a different pharmacy.
+model PrescriptionRequestItem {
+  id               String       @id @default(uuid()) @db.Uuid
+  requestId        String       @db.Uuid
+  medicationId     String       @db.Uuid
+  /// The kit the client actually ordered, as they sent it. Kept because it is
+  /// what identifies the product at the dispensing pharmacy — the cost of that
+  /// fill is read from the kit, not from the clinical medication record.
+  kitCode          String?      @db.VarChar(160)
+  nameText         String       @db.VarChar(250)
+  strength         String       @db.VarChar(120)
+  quantity         String       @db.VarChar(50)
+  refills          String       @db.VarChar(50)
+  daysSupply       String?      @db.VarChar(50)
+  decision         ItemDecision @default(PENDING)
+  approvedStrength String?      @db.VarChar(120)
+  approvedQuantity String?      @db.VarChar(50)
+  approvedRefills  String?      @db.VarChar(50)
+  /// Required when decision is MODIFIED or DENIED.
+  decisionReason   String?
+  /// Who decides this line. Normally every line on a visit carries the same
+  /// provider — the router only splits a visit when no single clinician is
+  /// credentialed for every category on it.
+  assignedProviderId String?   @db.Uuid
+  assignedAt         DateTime? @db.Timestamptz(6)
+  /// What the telehealth business charged the patient for this line, in whole
+  /// cents. Per line rather than per order, because revenue has to be
+  /// attributable to a category and a medication for the analytics to mean
+  /// anything. Optional: a partner that sends no price simply reports none.
+  quotedPriceCents Int?
+  decidedAt        DateTime?    @db.Timestamptz(6)
+  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+
+  request      PrescriptionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  medication   Medication          @relation(fields: [medicationId], references: [id], onDelete: Restrict)
+  /// SetNull rather than Cascade: losing who was going to review a line must
+  /// never take the line — and the patient's order — with it.
+  assignedProvider ProviderProfile? @relation("AssignedLines", fields: [assignedProviderId], references: [id], onDelete: SetNull)
+  prescription Prescription?
+
+  @@index([requestId], map: "prescription_request_items_request_idx")
+  @@index([assignedProviderId, decision], map: "prescription_request_items_assignee_idx")
+  @@map("prescription_request_items")
+}
+
+/// Every provider the router considered, and why each was skipped. Without this,
+/// "why did nobody pick this up" is unanswerable.
+model RoutingAttempt {
+  id         String         @id @default(uuid()) @db.Uuid
+  requestId  String         @db.Uuid
+  providerId String?        @db.Uuid
+  rule       String         @db.VarChar(120)
+  outcome    RoutingOutcome
+  detail     String?
+  createdAt  DateTime       @default(now()) @db.Timestamptz(6)
+
+  request  PrescriptionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider ProviderProfile?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt], map: "routing_attempts_request_created_idx")
+  @@map("routing_attempts")
+}
+
+model Prescription {
+  id                    String               @id @default(uuid()) @db.Uuid
+  tenantId              String               @db.Uuid
+  requestId             String               @db.Uuid
+  requestItemId         String               @unique @db.Uuid
+  patientId             String               @db.Uuid
+  providerId            String               @db.Uuid
+  medicationId          String               @db.Uuid
+  dose                  String               @db.VarChar(120)
+  quantity              String               @db.VarChar(50)
+  refills               Int                  @default(0)
+  daysSupply            Int?
+  /// How it is taken. Structured rather than buried in the directions text,
+  /// because a pharmacy and a patient app both need to act on it and neither
+  /// should be parsing prose to find it.
+  route                 AdministrationRoute?
+  /// Where on the body, for anything injected. Free text: "abdomen, rotating
+  /// sites" is the real instruction, and an enum of body parts would not hold it.
+  site                  String?              @db.VarChar(200)
+  /// How often, e.g. "once weekly". Kept apart from the dose so a change to one
+  /// cannot silently rewrite the other.
+  frequency             String?              @db.VarChar(120)
+  /// The clinician's own words to the patient. Not the label — this is the
+  /// explanation, the warning, and what to do if something feels wrong, and it
+  /// is what gets sent to them in chat.
+  patientNote           String?
+  /// The directions as they print on the label and go to the pharmacy.
+  ///
+  /// Composed from the fields above so a clinician cannot approve a dose of
+  /// 0.25mg and then type 0.5mg into the directions by hand. Still stored rather
+  /// than derived at read time: it is a legal record of what was written, and
+  /// regenerating it later from fields that have since changed would be a
+  /// different prescription.
+  sig                   String
+  /// Frozen at signing. The prescription must record who signed it and under
+  /// which licence as they were then, not as they are now.
+  providerNameSnapshot  String               @db.VarChar(200)
+  licenseNumberSnapshot String               @db.VarChar(80)
+  licenseStateSnapshot  String               @db.VarChar(2)
+  signedAt              DateTime             @db.Timestamptz(6)
+  status                PrescriptionStatus   @default(SIGNED)
+  voidedAt              DateTime?            @db.Timestamptz(6)
+  voidReason            String?
+  createdAt             DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  request     PrescriptionRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestItem PrescriptionRequestItem @relation(fields: [requestItemId], references: [id], onDelete: Cascade)
+  patient     Patient                 @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider    ProviderProfile         @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  medication  Medication              @relation(fields: [medicationId], references: [id], onDelete: Restrict)
+  orders      PharmacyOrder[]
+  chatThreads ChatThread[]
+  invoices    Invoice[]
+
+  @@index([tenantId, signedAt], map: "prescriptions_tenant_signed_idx")
+  @@index([patientId, signedAt], map: "prescriptions_patient_signed_idx")
+  @@index([status], map: "prescriptions_status_idx")
+  @@index([providerId, signedAt], map: "prescriptions_provider_signed_idx")
+  @@map("prescriptions")
+}
+
+// ═════════════════════════════════════════════════════════════ pharmacies ══
+
+model Pharmacy {
+  id                  String           @id @default(uuid()) @db.Uuid
+  slug                String           @unique @db.VarChar(120)
+  name                String           @db.VarChar(200)
+  platform            PharmacyPlatform @default(GENERIC_HTTP)
+  ncpdpId             String?          @db.VarChar(40)
+  /// Capability flags. Enforce "Branded med with compounding pharmacy".
+  dispensesCompounded Boolean          @default(false)
+  dispensesBranded    Boolean          @default(false)
+  contactEmail        String?          @db.VarChar(255)
+  contactPhone        String?          @db.VarChar(30)
+  isActive            Boolean          @default(true)
+  primaryTenantId     String?          @db.Uuid
+  status              AccountStatus    @default(ACTIVE)
+  suspendedAt         DateTime?        @db.Timestamptz(6)
+  suspendedReason     String?
+  suspendedByUserId   String?          @db.Uuid
+  archivedAt          DateTime?        @db.Timestamptz(6)
+  archivedReason      String?
+  archivedByUserId    String?          @db.Uuid
+  /// States this pharmacy will ship into. Collected on the application and
+  /// carried onto the record, so routing can exclude a pharmacy that cannot
+  /// serve the patient's state.
+  statesServed        String[]         @default([])
+  createdAt           DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
+
+  primaryTenant     Tenant?                 @relation("PharmacyPrimaryTenant", fields: [primaryTenantId], references: [id], onDelete: SetNull)
+  config            PharmacyConfig?
+  catalogCategories PharmacyCategory[]
+  catalogProducts   PharmacyProduct[]
+  application       PharmacyApplication?
+  formularyItems    PharmacyFormularyItem[]
+  orders            PharmacyOrder[]
+  webhookLogs       PharmacyWebhookLog[]
+  tenants           TenantPharmacy[]
+  staff             User[]                  @relation("PharmacyStaff")
+  requests          PrescriptionRequest[]
+
+  @@index([primaryTenantId, status], map: "pharmacies_primary_status_idx")
+  @@map("pharmacies")
+}
+
+/// Adding a pharmacy is a row, not a class. Only a genuinely different protocol
+/// justifies a new adapter implementation.
+model PharmacyConfig {
+  id                     String       @id @default(uuid()) @db.Uuid
+  pharmacyId             String       @unique @db.Uuid
+  baseUrl                String       @db.VarChar(500)
+  authStrategy           AuthStrategy @default(BEARER)
+  /// Secret name or SSM path, for deployments that keep credentials outside the
+  /// database. Optional once `credentialCipher` is set.
+  credentialRef          String       @db.VarChar(255)
+  /// The pharmacy's own LifeFile username and password, encrypted with the same
+  /// AES-256-GCM field key as PHI. Stored because each pharmacy has different
+  /// credentials and somebody has to be able to enter them; encrypted because a
+  /// database dump must not yield a working login to a pharmacy system. Never
+  /// returned by any endpoint — the console only ever learns whether it is set.
+  credentialCipher       String?
+  staticHeaders          Json?
+  payloadMapping         Json?
+  timeoutMs              Int          @default(15000)
+  webhookSecretRef       String?      @db.VarChar(255)
+  /// Nothing is sent to a live pharmacy system until this is switched on, so a
+  /// half-configured integration cannot transmit a real order.
+  isEnabled              Boolean      @default(false)
+  /// LifeFile routing identifiers. Not secrets — they say which practice and
+  /// location an order belongs to, and LifeFile rejects an order without them.
+  vendorId               String?      @db.VarChar(40)
+  locationId             String?      @db.VarChar(40)
+  apiNetworkId           String?      @db.VarChar(40)
+  practiceId             String?      @db.VarChar(40)
+  /// LifeFile's shipping service code used when a visit does not name one.
+  defaultShippingService String?      @db.VarChar(40)
+  createdAt              DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  pharmacy               Pharmacy     @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@map("pharmacy_configs")
+}
+
+model PharmacyFormularyItem {
+  id           String     @id @default(uuid()) @db.Uuid
+  pharmacyId   String     @db.Uuid
+  medicationId String     @db.Uuid
+  externalSku  String?    @db.VarChar(160)
+  isAvailable  Boolean    @default(true)
+  lastSyncedAt DateTime?  @db.Timestamptz(6)
+  pharmacy     Pharmacy   @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@unique([pharmacyId, medicationId], map: "pharmacy_formulary_items_unique")
+  @@map("pharmacy_formulary_items")
+}
+
+model PharmacyOrder {
+  id                  String              @id @default(uuid()) @db.Uuid
+  tenantId            String              @db.Uuid
+  prescriptionId      String              @db.Uuid
+  pharmacyId          String              @db.Uuid
+  externalOrderId     String?             @db.VarChar(160)
+  /// The pharmacy's own prescription number, returned when they accept it.
+  externalRxNumber    String?             @db.VarChar(160)
+  status              PharmacyOrderStatus @default(QUEUED)
+  attempts            Int                 @default(0)
+  submittedAt         DateTime?           @db.Timestamptz(6)
+  acknowledgedAt      DateTime?           @db.Timestamptz(6)
+  shippedAt           DateTime?           @db.Timestamptz(6)
+  deliveredAt         DateTime?           @db.Timestamptz(6)
+  trackingNumber      String?             @db.VarChar(120)
+  carrier             String?             @db.VarChar(80)
+  /// Cost of goods as it stood the moment this order was dispatched, plus the
+  /// catalogue row it came from. Snapshotted for the same reason the licence is
+  /// snapshotted onto a prescription: product prices change, and an order
+  /// filled in March must still reconcile at March's cost.
+  costOfGoodsCents    Int?
+  costSourceProductId String?             @db.Uuid
+  /// What we charge the client for this fill, snapshotted at the same instant as
+  /// the cost above and from the same lookup. Revenue and cost of one order have
+  /// to be a matched pair: reading them from the live catalogue later would let
+  /// a price edited in June restate what March's margin was.
+  ///
+  /// This is also the whole revenue model. An order only exists once a clinician
+  /// approved the line, so a refused request is excluded by construction rather
+  /// than by remembering to filter for it.
+  sellPriceCents      Int?
+  /// Which rule produced `sellPriceCents` — the product's own price, or a rate
+  /// negotiated with this client. Recorded so a surprising invoice can be
+  /// explained without re-deriving it.
+  sellPriceSource     SellPriceSource?
+  requestPayload      Json?
+  responsePayload     Json?
+  lastError           String?
+  createdAt           DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  pharmacy     Pharmacy     @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  chatThreads  ChatThread[]
+
+  @@index([status, createdAt], map: "pharmacy_orders_status_created_idx")
+  @@index([tenantId, createdAt], map: "pharmacy_orders_tenant_created_idx")
+  @@index([externalOrderId], map: "pharmacy_orders_external_idx")
+  /// Pharmacy fulfilment time and monthly volume.
+  @@index([pharmacyId, status, shippedAt], map: "pharmacy_orders_pharmacy_fulfilment_idx")
+  @@map("pharmacy_orders")
+}
+
+model PharmacyWebhookLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  pharmacyId      String?   @db.Uuid
+  event           String    @db.VarChar(120)
+  externalOrderId String?   @db.VarChar(160)
+  payload         Json
+  headers         Json?
+  status          String    @default("RECEIVED") @db.VarChar(40)
+  error           String?
+  processedAt     DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  pharmacy        Pharmacy? @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
+
+  @@index([externalOrderId], map: "pharmacy_webhook_logs_external_idx")
+  @@map("pharmacy_webhook_logs")
+}
+
+// ══════════════════════════════════════════════════════════════ messaging ══
+
+/// A conversation.
+///
+/// Participants are rows rather than fixed columns so a thread can hold any set
+/// of people, and each carries their own `lastReadAt` — unread state per person
+/// instead of a pair of booleans that only ever worked for two.
+///
+/// GENERAL threads exist because staff asked for them, but note the risk: a
+/// channel not tied to a patient still ends up containing patient details in
+/// practice. They are therefore audited and retained exactly like clinical
+/// threads, and `containsPhi` is set the moment one is linked to a patient.
+model ChatThread {
+  id              String           @id @default(uuid()) @db.Uuid
+  kind            ChatThreadKind
+  /// Null for GENERAL staff threads.
+  tenantId        String?          @db.Uuid
+  patientId       String?          @db.Uuid
+  /// What this thread is about, for support threads.
+  prescriptionId  String?          @db.Uuid
+  pharmacyOrderId String?          @db.Uuid
+  subject         String?          @db.VarChar(250)
+  status          ChatThreadStatus @default(OPEN)
+  /// Drives retention and export. True whenever a patient is attached.
+  containsPhi     Boolean          @default(true)
+  lastMessageAt   DateTime?        @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenant        Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient       Patient?          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription  Prescription?     @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+  pharmacyOrder PharmacyOrder?    @relation(fields: [pharmacyOrderId], references: [id], onDelete: SetNull)
+  participants  ChatParticipant[]
+  messages      ChatMessage[]
+
+  @@index([kind, lastMessageAt], map: "chat_threads_kind_last_idx")
+  @@index([patientId, lastMessageAt], map: "chat_threads_patient_last_idx")
+  @@index([pharmacyOrderId], map: "chat_threads_order_idx")
+  @@map("chat_threads")
+}
+
+/// Who is in a thread, and how far each has read.
+model ChatParticipant {
+  id         String    @id @default(uuid()) @db.Uuid
+  threadId   String    @db.Uuid
+  userId     String    @db.Uuid
+  role       Role
+  joinedAt   DateTime  @default(now()) @db.Timestamptz(6)
+  lastReadAt DateTime? @db.Timestamptz(6)
+  leftAt     DateTime? @db.Timestamptz(6)
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId], map: "chat_participants_thread_user_unique")
+  @@index([userId, leftAt], map: "chat_participants_user_idx")
+  @@map("chat_participants")
+}
+
+model ChatMessage {
+  id           String          @id @default(uuid()) @db.Uuid
+  threadId     String          @db.Uuid
+  authorUserId String?         @db.Uuid
+  authorRole   Role
+  kind         ChatMessageKind @default(TEXT)
+  /// Encrypted at rest.
+  content      String
+  sentAt       DateTime        @default(now()) @db.Timestamptz(6)
+  deliveredAt  DateTime?       @db.Timestamptz(6)
+  readAt       DateTime?       @db.Timestamptz(6)
+
+  thread      ChatThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author      User?            @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  attachments ChatAttachment[]
+
+  @@index([threadId, sentAt], map: "chat_messages_thread_sent_idx")
+  @@map("chat_messages")
+}
+
+model ChatAttachment {
+  id        String      @id @default(uuid()) @db.Uuid
+  messageId String      @db.Uuid
+  bucket    String      @db.VarChar(255)
+  objectKey String      @db.VarChar(512)
+  mime      String      @db.VarChar(120)
+  size      Int
+  fileName  String?     @db.VarChar(255)
+  createdAt DateTime    @default(now()) @db.Timestamptz(6)
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("chat_attachments")
+}
+
+// ════════════════════════════════════════════════════════════════ billing ══
+
+model Invoice {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  patientId       String        @db.Uuid
+  prescriptionId  String?       @db.Uuid
+  pharmacyOrderId String?       @db.Uuid
+  number          String        @unique @db.VarChar(60)
+  currency        String        @default("USD") @db.VarChar(8)
+  subtotalCents   Int           @default(0)
+  discountCents   Int           @default(0)
+  taxCents        Int           @default(0)
+  totalCents      Int           @default(0)
+  status          InvoiceStatus @default(DRAFT)
+  /// Where the money figure came from, so a chart can be traced to its source.
+  source          RevenueSource @default(TENANT_QUOTED)
+  issuedAt        DateTime?     @db.Timestamptz(6)
+  dueAt           DateTime?     @db.Timestamptz(6)
+  paidAt          DateTime?     @db.Timestamptz(6)
+  pdfObjectKey    String?       @db.VarChar(512)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+  lines        InvoiceLine[]
+  payments     Payment[]
+
+  @@index([tenantId, status, issuedAt], map: "invoices_tenant_status_issued_idx")
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id             String      @id @default(uuid()) @db.Uuid
+  invoiceId      String      @db.Uuid
+  description    String      @db.VarChar(300)
+  medicationId   String?     @db.Uuid
+  quantity       Int         @default(1)
+  unitPriceCents Int
+  totalCents     Int
+  invoice        Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  medication     Medication? @relation(fields: [medicationId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId], map: "invoice_lines_invoice_idx")
+  /// Revenue drill-down by medication.
+  @@index([medicationId], map: "invoice_lines_medication_idx")
+  @@map("invoice_lines")
+}
+
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  invoiceId     String        @db.Uuid
+  processor     String        @db.VarChar(60)
+  externalId    String?       @db.VarChar(160)
+  amountCents   Int
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?     @db.Timestamptz(6)
+  failureReason String?
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId], map: "payments_invoice_idx")
+  @@map("payments")
+}
+
+// ══════════════════════════════════════════════════ pharmacy catalogue ══
+
+/// A pharmacy's own grouping of what it stocks.
+///
+/// Distinct from the clinical `Category` (the partner API's `visitType`, which
+/// drives questionnaires and provider qualification). Two pharmacies may group
+/// the same drug differently, so this is scoped per pharmacy — with an optional
+/// link to the clinical category when the mapping is meaningful.
+model PharmacyCategory {
+  id                 String   @id @default(uuid()) @db.Uuid
+  pharmacyId         String   @db.Uuid
+  name               String   @db.VarChar(160)
+  slug               String   @db.VarChar(160)
+  description        String?
+  /// Optional bridge to the clinical catalogue.
+  clinicalCategoryId String?  @db.Uuid
+  /// How many days a course in this category normally covers. Products inherit
+  /// it unless they state their own — a weight-management vial and a 90-day
+  /// finasteride supply are both "one product", and typing the same number onto
+  /// every row is how one of them ends up wrong.
+  defaultDaysSupply  Int?
+  sortOrder          Int      @default(0)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  pharmacy         Pharmacy          @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  clinicalCategory Category?         @relation(fields: [clinicalCategoryId], references: [id], onDelete: SetNull)
+  products         PharmacyProduct[]
+
+  @@unique([pharmacyId, slug], map: "pharmacy_categories_pharmacy_slug_unique")
+  @@index([pharmacyId, isActive, sortOrder], map: "pharmacy_categories_listing_idx")
+  @@map("pharmacy_categories")
+}
+
+/// One orderable item in a pharmacy's catalogue.
+///
+/// `kitCode` is the identifier the pharmacy's own system expects on an order
+/// (e.g. 1STCHOICE_NAD_INJ_S_20_90D). `favouriteName` is what our team calls it
+/// internally — the label staff recognise, which is rarely the label the
+/// pharmacy prints.
+model PharmacyProduct {
+  id                 String         @id @default(uuid()) @db.Uuid
+  pharmacyId         String         @db.Uuid
+  pharmacyCategoryId String         @db.Uuid
+  /// The pharmacy's order code.
+  kitCode            String         @db.VarChar(160)
+  /// Internal shorthand, shown to staff.
+  favouriteName      String         @db.VarChar(200)
+  medicationName     String         @db.VarChar(250)
+  /// Strength per unit volume, e.g. "2.5mg/mL".
+  concentration      String?        @db.VarChar(120)
+  /// Dosage form — injectable, oral, topical, nasal.
+  form               MedicationForm @default(OTHER)
+  /// Container size, e.g. "10mL".
+  vialSize           String?        @db.VarChar(80)
+  daysSupply         Int?
+  /// The directions this product ships with, e.g. "INJECT 0.8ML (80 UNITS)
+  /// SUBCUTANEOUSLY ONCE WEEKLY". A default a clinician starts from and may
+  /// change — the prescription records what they signed, not this.
+  defaultSig         String?
+  /// How much is dispensed and in what unit: "10" and "milliliter". Two fields
+  /// rather than one string, because a pharmacy's order payload needs the number
+  /// on its own and parsing it back out of "10 milliliter" is a bug waiting.
+  dispenseQuantity   String?        @db.VarChar(40)
+  dispenseUnit       String?        @db.VarChar(40)
+  /// Refills this product is normally written for.
+  refills            Int            @default(0)
+  /// The pharmacy's own note, shown to whoever is choosing between products.
+  pharmacyNotes      String?
+  /// Cost of goods in integer cents. Never a float — money in a float is a bug
+  /// waiting for a rounding edge.
+  costOfGoodsCents   Int?
+  /// What the platform charges a client business for this product, in integer
+  /// cents. Sits beside the cost deliberately: margin is the difference between
+  /// these two numbers, and keeping them apart is how one of them gets changed
+  /// without anyone noticing what it did to the other.
+  ///
+  /// Null means unpriced, which is not the same as free — an order filled from
+  /// an unpriced product is reported as uncovered rather than as zero revenue.
+  /// A client-specific rate overrides this; see TenantMedication.priceCents.
+  sellPriceCents     Int?
+  /// Optional link to the platform medication a tenant orders by `medId`.
+  medicationId       String?        @db.Uuid
+  isActive           Boolean        @default(true)
+  createdAt          DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+
+  pharmacy         Pharmacy         @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  pharmacyCategory PharmacyCategory @relation(fields: [pharmacyCategoryId], references: [id], onDelete: Cascade)
+  medication       Medication?      @relation(fields: [medicationId], references: [id], onDelete: SetNull)
+
+  @@unique([pharmacyId, kitCode], map: "pharmacy_products_pharmacy_kit_unique")
+  @@index([pharmacyCategoryId, isActive], map: "pharmacy_products_category_idx")
+  @@map("pharmacy_products")
+}
+
+// ════════════════════════════════════════════════ onboarding applications ══
+
+/// A pharmacy applying to work with us, submitted from the public site.
+///
+/// Deliberately separate from `Pharmacy`: an applicant is not a pharmacy we
+/// dispense through, and conflating the two is how an unvetted pharmacy ends up
+/// live. Approval provisions the real record.
+model PharmacyApplication {
+  id                    String            @id @default(uuid()) @db.Uuid
+  legalName             String            @db.VarChar(250)
+  tradingName           String?           @db.VarChar(250)
+  contactName           String            @db.VarChar(200)
+  contactEmail          String            @db.VarChar(255)
+  contactPhone          String            @db.VarChar(40)
+  websiteUrl            String?           @db.VarChar(400)
+  addressLine1          String            @db.VarChar(200)
+  addressLine2          String?           @db.VarChar(200)
+  city                  String            @db.VarChar(120)
+  state                 String            @db.VarChar(2)
+  postalCode            String            @db.VarChar(20)
+  /// States this pharmacy is licensed to ship into.
+  statesServed          String[]          @default([])
+  ncpdpId               String?           @db.VarChar(40)
+  npi                   String?           @db.VarChar(20)
+  deaNumber             String?           @db.VarChar(40)
+  dispensesCompounded   Boolean           @default(false)
+  dispensesBranded      Boolean           @default(false)
+  isOutsourcingFacility Boolean           @default(false)
+  notes                 String?
+  /// Self-serve from the public form, or keyed in by a human on their behalf.
+  source                ApplicationSource @default(SELF_SERVE)
+  enteredByUserId       String?           @db.Uuid
+  /// Clinical categories this pharmacy wants to carry.
+  categorySlugs         String[]          @default([])
+  integrationType       PharmacyPlatform  @default(GENERIC_HTTP)
+  status                ApplicationStatus @default(SUBMITTED)
+  reviewedByUserId      String?           @db.Uuid
+  reviewedAt            DateTime?         @db.Timestamptz(6)
+  reviewNotes           String?
+  /// Set once approved and provisioned.
+  pharmacyId            String?           @unique @db.Uuid
+  submittedIp           String?           @db.VarChar(64)
+  createdAt             DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+
+  pharmacy  Pharmacy?                     @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
+  documents PharmacyApplicationDocument[]
+
+  @@index([status, createdAt, id], map: "pharmacy_applications_status_created_idx")
+  @@index([contactEmail], map: "pharmacy_applications_email_idx")
+  @@map("pharmacy_applications")
+}
+
+model PharmacyApplicationDocument {
+  id               String               @id @default(uuid()) @db.Uuid
+  applicationId    String               @db.Uuid
+  kind             PharmacyDocumentKind
+  /// The state this document covers, for per-state licences.
+  state            String?              @db.VarChar(2)
+  documentNumber   String?              @db.VarChar(120)
+  issuedAt         DateTime?            @db.Timestamptz(6)
+  expiresAt        DateTime?            @db.Timestamptz(6)
+  bucket           String               @db.VarChar(255)
+  objectKey        String               @db.VarChar(512)
+  fileName         String               @db.VarChar(255)
+  mime             String               @db.VarChar(120)
+  size             Int
+  /// Who put this here. Null means the applicant uploaded it themselves; a user
+  /// id means somebody on the platform did it on their behalf — which is a
+  /// different provenance and has to be visible to whoever reviews it.
+  uploadedByUserId String?              @db.Uuid
+  /// Why it was uploaded for them, e.g. "sent by fax, 19 Sep".
+  uploadedNote     String?
+  reviewStatus     DocumentReviewStatus @default(PENDING)
+  reviewNotes      String?
+  createdAt        DateTime             @default(now()) @db.Timestamptz(6)
+
+  application PharmacyApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, kind], map: "pharmacy_application_documents_app_kind_idx")
+  @@map("pharmacy_application_documents")
+}
+
+/// A clinician applying to join the provider roster.
+model ProviderApplication {
+  id                     String            @id @default(uuid()) @db.Uuid
+  firstName              String            @db.VarChar(100)
+  lastName               String            @db.VarChar(100)
+  email                  String            @db.VarChar(255)
+  phone                  String            @db.VarChar(40)
+  credentials            String            @db.VarChar(80)
+  npi                    String            @db.VarChar(20)
+  deaNumber              String?           @db.VarChar(40)
+  specialties            String[]          @default([])
+  yearsExperience        Int?
+  bio                    String?
+  /// Categories they are asking to review.
+  requestedCategorySlugs String[]          @default([])
+  source                 ApplicationSource @default(SELF_SERVE)
+  enteredByUserId        String?           @db.Uuid
+  status                 ApplicationStatus @default(SUBMITTED)
+  reviewedByUserId       String?           @db.Uuid
+  reviewedAt             DateTime?         @db.Timestamptz(6)
+  reviewNotes            String?
+  /// Set once approved and provisioned.
+  providerId             String?           @unique @db.Uuid
+  submittedIp            String?           @db.VarChar(64)
+  createdAt              DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+
+  provider  ProviderProfile?              @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  licenses  ProviderApplicationLicense[]
+  documents ProviderApplicationDocument[]
+
+  @@index([status, createdAt, id], map: "provider_applications_status_created_idx")
+  @@index([email], map: "provider_applications_email_idx")
+  @@map("provider_applications")
+}
+
+/// One claimed licence per state. Routing depends on these being true, so each
+/// is verified against its uploaded document before the application is approved.
+model ProviderApplicationLicense {
+  id               String               @id @default(uuid()) @db.Uuid
+  applicationId    String               @db.Uuid
+  state            String               @db.VarChar(2)
+  licenseNumber    String               @db.VarChar(80)
+  issuedAt         DateTime?            @db.Timestamptz(6)
+  expiresAt        DateTime             @db.Timestamptz(6)
+  verifiedAt       DateTime?            @db.Timestamptz(6)
+  /// How this licence came to be trusted. Routing treats a verified licence as
+  /// proof that a clinician may prescribe into a state, so "who decided, and on
+  /// what basis" is the first question a regulator asks — and a boolean cannot
+  /// answer it.
+  verifiedMethod   LicenceVerification?
+  verifiedByUserId String?              @db.Uuid
+  /// Required for a manual verification: what was checked, and where.
+  verifiedNote     String?
+  createdAt        DateTime             @default(now()) @db.Timestamptz(6)
+
+  application ProviderApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, state], map: "provider_application_licenses_app_state_unique")
+  @@map("provider_application_licenses")
+}
+
+model ProviderApplicationDocument {
+  id               String               @id @default(uuid()) @db.Uuid
+  applicationId    String               @db.Uuid
+  kind             ProviderDocumentKind
+  state            String?              @db.VarChar(2)
+  documentNumber   String?              @db.VarChar(120)
+  issuedAt         DateTime?            @db.Timestamptz(6)
+  expiresAt        DateTime?            @db.Timestamptz(6)
+  bucket           String               @db.VarChar(255)
+  objectKey        String               @db.VarChar(512)
+  fileName         String               @db.VarChar(255)
+  mime             String               @db.VarChar(120)
+  size             Int
+  /// Who put this here. Null means the applicant uploaded it themselves; a user
+  /// id means somebody on the platform did it on their behalf — which is a
+  /// different provenance and has to be visible to whoever reviews it.
+  uploadedByUserId String?              @db.Uuid
+  /// Why it was uploaded for them, e.g. "sent by fax, 19 Sep".
+  uploadedNote     String?
+  reviewStatus     DocumentReviewStatus @default(PENDING)
+  reviewNotes      String?
+  createdAt        DateTime             @default(now()) @db.Timestamptz(6)
+
+  application ProviderApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, kind], map: "provider_application_documents_app_kind_idx")
+  @@map("provider_application_documents")
+}
+
+// ═════════════════════════════════════════════════════════ notifications ══
+
+/// An event someone should be told about.
+///
+/// The body stored here is the *full* text, shown only in-app behind
+/// authentication. Outbound email and SMS never render it — see
+/// NotificationDelivery.
+model Notification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tenantId   String?   @db.Uuid
+  kind       String    @db.VarChar(80)
+  title      String    @db.VarChar(200)
+  /// May contain PHI. In-app only.
+  body       String
+  /// Structured payload for the UI to deep-link with.
+  data       Json?
+  entityType String?   @db.VarChar(80)
+  entityId   String?   @db.VarChar(120)
+  readAt     DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, readAt, createdAt], map: "notifications_user_unread_idx")
+  @@map("notifications")
+}
+
+/// One attempt to deliver a notification down one channel.
+///
+/// `renderedBody` is what actually left the building. For EMAIL and SMS this is
+/// deliberately content-free — a nudge and a link, never the medication, the
+/// condition or the tracking number. Cleartext email and SMS are not channels we
+/// control, and a shipment notice naming the drug is PHI disclosed to whoever
+/// picks up the phone.
+model NotificationDelivery {
+  id             String                     @id @default(uuid()) @db.Uuid
+  notificationId String                     @db.Uuid
+  channel        NotificationChannel
+  status         NotificationDeliveryStatus @default(PENDING)
+  /// Email address, phone number or webhook URL. Stored for the delivery audit.
+  target         String?                    @db.VarChar(400)
+  /// Exactly what was sent. Null for IN_APP, which renders from the parent.
+  renderedBody   String?
+  attempts       Int                        @default(0)
+  sentAt         DateTime?                  @db.Timestamptz(6)
+  failedAt       DateTime?                  @db.Timestamptz(6)
+  error          String?
+  /// Provider-side id, for reconciling against SES or Twilio.
+  externalId     String?                    @db.VarChar(160)
+  createdAt      DateTime                   @default(now()) @db.Timestamptz(6)
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt], map: "notification_deliveries_status_idx")
+  @@map("notification_deliveries")
+}
+
+/// Per-patient consent to be contacted on channels we do not control.
+///
+/// HIPAA allows unencrypted email or SMS to a patient who has been warned of the
+/// risk and asked for it anyway. That warning and that request are what this
+/// table records — without a row here, outbound messages stay content-free.
+model CommunicationConsent {
+  id              String    @id @default(uuid()) @db.Uuid
+  patientId       String    @unique @db.Uuid
+  /// Consents to PHI *content* in email, not merely to being emailed.
+  emailPhiConsent Boolean   @default(false)
+  smsPhiConsent   Boolean   @default(false)
+  /// The exact wording the patient agreed to, kept verbatim for the record.
+  consentText     String?
+  consentedAt     DateTime? @db.Timestamptz(6)
+  revokedAt       DateTime? @db.Timestamptz(6)
+  capturedIp      String?   @db.VarChar(64)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("communication_consents")
+}
+
+// ═══════════════════════════════════════════ invites & compensation ══
+
+/// An invitation to set a password and take ownership of an account.
+///
+/// Its own table rather than reusing PasswordResetToken because "resend invite"
+/// needs a count and a last-sent time, and because an invite that was never
+/// accepted is a different thing from a password someone forgot.
+///
+/// The Super Admin never sets a password for anyone — they mint one of these.
+model UserInvite {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @db.Uuid
+  tokenHash       String    @unique
+  invitedByUserId String?   @db.Uuid
+  expiresAt       DateTime  @db.Timestamptz(6)
+  acceptedAt      DateTime? @db.Timestamptz(6)
+  revokedAt       DateTime? @db.Timestamptz(6)
+  resendCount     Int       @default(0)
+  lastSentAt      DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+
+  user      User  @relation("InviteRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User? @relation("InviteIssuedBy", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId, acceptedAt], map: "user_invites_user_accepted_idx")
+  @@index([expiresAt], map: "user_invites_expires_idx")
+  @@map("user_invites")
+}
+
+/// What a provider is paid per completed review.
+///
+/// A schedule rather than a constant because the rate will change, and past
+/// earnings must still reconcile at the rate that applied when the work was
+/// done — the same reasoning as snapshotting a licence onto a prescription.
+///
+/// Resolution is most-specific-wins: a row for this provider and this category
+/// beats one for this provider, which beats the platform default (both ids null).
+model ProviderFeeSchedule {
+  id              String    @id @default(uuid()) @db.Uuid
+  /// Null means the platform default, applying to anyone without an override.
+  providerId      String?   @db.Uuid
+  /// Null means all categories. Lets harder work pay more later.
+  categoryId      String?   @db.Uuid
+  amountCents     Int       @default(100)
+  effectiveFrom   DateTime  @default(now()) @db.Timestamptz(6)
+  effectiveTo     DateTime? @db.Timestamptz(6)
+  note            String?
+  createdByUserId String?   @db.Uuid
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+
+  provider ProviderProfile?  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category Category?         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  earnings ProviderEarning[]
+
+  @@index([providerId, categoryId, effectiveFrom], map: "provider_fee_schedules_lookup_idx")
+  @@map("provider_fee_schedules")
+}
+
+/// One row per visit a provider completed.
+///
+/// Earned on a completed review — approve or deny. The clinical work is the same
+/// either way, and paying only for approvals would give a provider a financial
+/// reason to approve a request that should be declined.
+model ProviderEarning {
+  id              String        @id @default(uuid()) @db.Uuid
+  providerId      String        @db.Uuid
+  tenantId        String        @db.Uuid
+  /// One earning per clinician per visit — a visit split across two
+  /// credentialed clinicians pays each of them once. Unique together with the
+  /// provider, so a replayed event still cannot pay twice.
+  requestId       String        @db.Uuid
+  amountCents     Int
+  feeScheduleId   String?       @db.Uuid
+  /// Recorded so a payout report can show approvals and denials side by side.
+  outcome         RequestStatus
+  status          EarningStatus @default(PENDING)
+  earnedAt        DateTime      @default(now()) @db.Timestamptz(6)
+  paidAt          DateTime?     @db.Timestamptz(6)
+  payoutReference String?       @db.VarChar(120)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+
+  provider    ProviderProfile      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  request     PrescriptionRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  feeSchedule ProviderFeeSchedule? @relation(fields: [feeScheduleId], references: [id], onDelete: SetNull)
+
+  @@unique([requestId, providerId], map: "provider_earnings_request_provider_key")
+  @@index([providerId, earnedAt], map: "provider_earnings_provider_earned_idx")
+  @@index([status, earnedAt], map: "provider_earnings_payout_idx")
+  @@index([tenantId, earnedAt], map: "provider_earnings_tenant_earned_idx")
+  @@map("provider_earnings")
+}

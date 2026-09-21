@@ -1,0 +1,98 @@
+{
+  "name": "@health-emr/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:dev": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "test:e2e": "jest --config test/jest-e2e.json --runInBand",
+    "demo": "ts-node -r tsconfig-paths/register scripts/setup-walkthrough.ts",
+    "db:seed-earnings": "ts-node -r tsconfig-paths/register scripts/seed-earnings.ts",
+    "db:seed-catalog": "ts-node -r tsconfig-paths/register scripts/seed-catalog.ts",
+    "audit:repair": "ts-node -r tsconfig-paths/register scripts/repair-audit-chain.ts",
+    "docs:api": "node scripts/build-api-docs.mjs",
+    "db:seed-questionnaires": "ts-node -r tsconfig-paths/register scripts/seed-questionnaires.ts",
+    "db:seed-prices": "ts-node -r tsconfig-paths/register scripts/seed-sell-prices.ts",
+    "db:seed-first-choice": "ts-node -r tsconfig-paths/register scripts/seed-first-choice-catalogue.ts",
+    "db:reconcile": "ts-node -r tsconfig-paths/register scripts/reconcile-catalogue.ts",
+    "verify:filters": "node scripts/verify-column-filters.mjs"
+  },
+  "prisma": {
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
+  },
+  "dependencies": {
+    "@health-emr/types": "*",
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/event-emitter": "^3.0.1",
+    "@nestjs/jwt": "^11.0.1",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.18",
+    "@nestjs/schedule": "^5.0.1",
+    "@nestjs/swagger": "^11.2.1",
+    "@nestjs/throttler": "^6.4.0",
+    "@nestjs/websockets": "^11.1.18",
+    "@prisma/client": "^6.18.0",
+    "@types/multer": "^2.2.0",
+    "argon2": "^0.44.0",
+    "helmet": "^8.1.0",
+    "multer": "^2.4.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@health-emr/eslint-config": "*",
+    "@health-emr/tsconfig": "*",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.7",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^9.18.0",
+    "jest": "^29.7.0",
+    "prisma": "^6.18.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": ".",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@health-emr/types$": "<rootDir>/../../packages/types/src/index.ts"
+    },
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.ts"
+    ]
+  }
+}
