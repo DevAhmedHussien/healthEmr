@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .next/
+# Next's build script writes here (NEXT_DIST_DIR), so the default ignore misses it.
+.next-prod/
 .turbo/
 *.tsbuildinfo
 .env

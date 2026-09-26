@@ -4,7 +4,18 @@ import globals from 'globals';
 
 /** Shared flat config. Apps extend this and add their own env/globals. */
 export default tseslint.config(
-  { ignores: ['dist/**', '.next/**', 'node_modules/**', 'coverage/**', '**/*.generated.ts'] },
+  // `.next-prod` alongside `.next`: the build script redirects Next's output
+  // there via NEXT_DIST_DIR, and generated bundles are not ours to lint.
+  {
+    ignores: [
+      'dist/**',
+      '.next/**',
+      '.next-prod/**',
+      'node_modules/**',
+      'coverage/**',
+      '**/*.generated.ts',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
