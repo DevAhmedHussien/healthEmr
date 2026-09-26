@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -30,6 +31,8 @@ import {
   rosterSchema,
   voidVisitSchema,
   updateProviderSchema,
+  providerLicenceInputSchema,
+  providerLicenceUpdateSchema,
   updateTenantSchema,
   createWebhookSchema,
   updateWebhookSchema,
@@ -43,6 +46,14 @@ import { GovernanceService } from './governance.service';
 import { TenantProfileService } from './tenant-profile.service';
 import { BillingService, toCsv } from './billing.service';
 import { RerouteService } from '@/contexts/pharmacy/reroute.service';
+import { ProviderLicencesService } from '@/contexts/practitioners/provider-licences.service';
+import { ManualAssignmentService } from '@/contexts/practitioners/manual-assignment.service';
+import { ProviderActivityService } from '@/contexts/practitioners/provider-activity.service';
+import { PermanentDeleteService, type Kind } from './permanent-delete.service';
+import { ClinicalRecordsService } from './clinical-records.service';
+import { RequiresPermission } from '@/shared/auth/decorators/permissions.decorator';
+import { PlatformPermission } from '@health-emr/types';
+import { activityQuerySchema as providerActivityQuerySchema } from '@/contexts/practitioners/activity-query';
 import { StuckOrderService } from './stuck-orders.service';
 import { ApiAccessService } from '@/contexts/tenancy/api-access.service';
 import { WebhookAdminService } from '@/contexts/webhooks/webhook-admin.service';
@@ -59,6 +70,48 @@ class ActivityQueryDto extends createZodDto(activityListSchema) {}
 class ArchiveDto extends createZodDto(archiveSchema) {}
 class UpdateTenantDto extends createZodDto(updateTenantSchema) {}
 class UpdateProviderDto extends createZodDto(updateProviderSchema) {}
+class ProviderLicenceDto extends createZodDto(providerLicenceInputSchema) {}
+const assignVisitSchema = z
+  .object({
+    providerId: z.string().uuid(),
+    // Required, not optional: this overrides an automated clinical routing
+    // decision, and "why" is the only thing that makes it reviewable later.
+    reason: z.string().trim().min(10).max(500),
+  })
+  .strict();
+class AssignVisitDto extends createZodDto(assignVisitSchema) {}
+class ProviderActivityQueryDto extends createZodDto(providerActivityQuerySchema) {}
+
+const permanentDeleteSchema = z
+  .object({
+    // Ten characters, because this is the record of why something was erased
+    // and "cleanup" answers nobody's question a year from now.
+    reason: z.string().trim().min(10, 'Say why, in a sentence').max(500),
+    /**
+     * Take the account's staff logins with it.
+     *
+     * Consent rather than authority — the caller already holds ACCOUNTS_DELETE
+     * to be here. What this records is that they were shown which logins would
+     * go and agreed. Absent means no, and the deletion is refused instead.
+     */
+    removeStaffAccounts: z.boolean().optional(),
+  })
+  .strict();
+class PermanentDeleteDto extends createZodDto(permanentDeleteSchema) {}
+
+/** The two clinical records with their own delete rules, named as in the URL. */
+const RECORD_KINDS = ['visit', 'prescription'] as const;
+
+function asRecordKind(kind: string): (typeof RECORD_KINDS)[number] {
+  if (!(RECORD_KINDS as readonly string[]).includes(kind)) {
+    throw new BadRequestException(`Unknown record kind "${kind}"`);
+  }
+  return kind as (typeof RECORD_KINDS)[number];
+}
+
+/** The three things that can be erased, named as they are in the URL. */
+const DELETABLE = ['tenant', 'provider', 'pharmacy'] as const;
+class ProviderLicencePatchDto extends createZodDto(providerLicenceUpdateSchema) {}
 class RosterDto extends createZodDto(rosterSchema) {}
 const invoiceListSchema = invoiceQuerySchema.extend(columnFilterShape(INVOICE_FILTERS));
 class InvoiceQueryDto extends createZodDto(invoiceListSchema) {}
@@ -128,12 +181,18 @@ export class GovernanceController {
     private readonly orders: StuckOrderService,
     private readonly apiAccess: ApiAccessService,
     private readonly visits: VisitVoidService,
+    private readonly licencesService: ProviderLicencesService,
+    private readonly assignment: ManualAssignmentService,
+    private readonly activityService: ProviderActivityService,
+    private readonly permanent: PermanentDeleteService,
+    private readonly records: ClinicalRecordsService,
     private readonly webhooks: WebhookAdminService,
   ) {}
 
   // ── activity ─────────────────────────────────────────────────────────────
 
   @Get('activity')
+  @RequiresPermission(PlatformPermission.AUDIT_READ)
   @ApiOperation({
     summary: 'Who did what, and when',
     description:
@@ -146,6 +205,7 @@ export class GovernanceController {
   }
 
   @Get('activity/integrity')
+  @RequiresPermission(PlatformPermission.AUDIT_READ)
   @ApiOperation({
     summary: 'Verify the audit chain',
     description:
@@ -158,6 +218,7 @@ export class GovernanceController {
   }
 
   @Get('activity/:entityType/:entityId')
+  @RequiresPermission(PlatformPermission.AUDIT_READ)
   @ApiParam({ name: 'entityType', example: 'Pharmacy' })
   @ApiOperation({ summary: 'Everything that ever happened to one record' })
   @ApiStandardErrors()
@@ -184,6 +245,7 @@ export class GovernanceController {
 
   @Delete('visits/:id')
   @ApiParam({ name: 'id', format: 'uuid' })
+  @RequiresPermission(PlatformPermission.RECORDS_DELETE)
   @ApiOperation({
     summary: 'Withdraw a visit',
     description:
@@ -235,9 +297,44 @@ export class GovernanceController {
     return this.visits.patch(id, body, user);
   }
 
+  @Get('visits/:id/candidates')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Who could take this visit',
+    description:
+      'Every active clinician, with the reason each one was passed over. Licence and credentialling ' +
+      'are hard refusals; being at capacity is shown but does not disqualify, because overriding ' +
+      'that is what this screen is for.',
+  })
+  @ApiStandardErrors()
+  candidates(@Param('id', ParseUUIDPipe) id: string) {
+    return this.assignment.candidates(id);
+  }
+
+  @Post('visits/:id/assign')
+  @HttpCode(200)
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Hand a waiting visit to a clinician',
+    description:
+      'For a visit nobody can take — no one is licensed in the patient’s state for that treatment, ' +
+      'so retrying will never place it. Capacity is overridden; licence and credentialling are not, ' +
+      'at any level of privilege. Recorded against the visit and in the audit log.',
+  })
+  @ApiZodBody(AssignVisitDto)
+  @ApiStandardErrors()
+  assignVisit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: AssignVisitDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.assignment.assign(id, body.providerId, body.reason, user.id);
+  }
+
   @Post('visits/:id/restore')
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
+  @RequiresPermission(PlatformPermission.RECORDS_DELETE)
   @ApiOperation({
     summary: 'Put a withdrawn visit back',
     description:
@@ -289,6 +386,7 @@ export class GovernanceController {
   }
 
   @Patch('webhooks/:webhookId')
+  @RequiresPermission(PlatformPermission.WEBHOOKS_MANAGE)
   @ApiParam({ name: 'webhookId', format: 'uuid' })
   @ApiOperation({
     summary: 'Change an endpoint',
@@ -308,6 +406,7 @@ export class GovernanceController {
   }
 
   @Delete('webhooks/:webhookId')
+  @RequiresPermission(PlatformPermission.WEBHOOKS_MANAGE)
   @ApiParam({ name: 'webhookId', format: 'uuid' })
   @ApiOperation({
     summary: 'Remove an endpoint',
@@ -369,6 +468,7 @@ export class GovernanceController {
   }
 
   @Post('admins/:id/api-keys')
+  @RequiresPermission(PlatformPermission.API_KEYS_MANAGE)
   @HttpCode(201)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({
@@ -405,6 +505,7 @@ export class GovernanceController {
   }
 
   @Delete('admins/:id/api-keys/:keyId')
+  @RequiresPermission(PlatformPermission.API_KEYS_MANAGE)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiParam({ name: 'keyId', format: 'uuid' })
   @ApiOperation({
@@ -439,6 +540,7 @@ export class GovernanceController {
   }
 
   @Delete('admins/:id')
+  @RequiresPermission(PlatformPermission.ACCOUNTS_ARCHIVE)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({
     summary: 'Archive a client business',
@@ -457,6 +559,7 @@ export class GovernanceController {
   }
 
   @Post('admins/:id/restore')
+  @RequiresPermission(PlatformPermission.ACCOUNTS_ARCHIVE)
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({ summary: 'Restore an archived client business' })
@@ -518,7 +621,238 @@ export class GovernanceController {
     return this.governance.updateProvider(id, body, user.id);
   }
 
+  // ── erasing a record ─────────────────────────────────────────────────────
+
+  @Get('permanent-delete/:kind/:id')
+  @ApiParam({ name: 'kind', enum: DELETABLE })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Whether this can be erased, and what stops it',
+    description:
+      'Asked before the button is offered, so an administrator reads "31 visits refer to this" ' +
+      'rather than discovering it by pressing delete. Nothing is changed.',
+  })
+  @RequiresPermission(PlatformPermission.ACCOUNTS_DELETE)
+  @ApiStandardErrors()
+  inspectDelete(
+    @Param('kind') kind: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.permanent.inspect(asKind(kind), id, user);
+  }
+
+  @Delete('permanent-delete/:kind/:id')
+  @ApiParam({ name: 'kind', enum: DELETABLE })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Erase a record permanently',
+    description:
+      'For the account created by mistake or the duplicate — not for one that has been used. ' +
+      'Refused outright while any record of care or of money refers to it: a visit, prescription, ' +
+      'encounter, intake questionnaire, conversation, pharmacy order, patient, invoice or ' +
+      'clinician payment. Those are retained for years and this would cascade into them. ' +
+      'Staff accounts are the one blocker that can be cleared, by passing removeStaffAccounts ' +
+      'and holding the grant — and only for staff who wrote nothing clinical. Archiving is the ' +
+      'answer in every other case.',
+  })
+  @RequiresPermission(PlatformPermission.ACCOUNTS_DELETE)
+  @ApiZodBody(PermanentDeleteDto)
+  @ApiStandardErrors()
+  permanentDelete(
+    @Param('kind') kind: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: PermanentDeleteDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.permanent.remove(
+      asKind(kind),
+      id,
+      body.reason,
+      user,
+      body.removeStaffAccounts ?? false,
+    );
+  }
+
+  // ── erasing a clinical record ────────────────────────────────────────────
+
+  @Get('records/:kind/:id/deletion')
+  @ApiParam({ name: 'kind', enum: ['visit', 'prescription'] })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Whether this record can be erased, and what stops it',
+    description:
+      'A visit a clinician has decided, and every prescription, can only be withdrawn. The ' +
+      'answer carries the reason in the words to put on the disabled button, so the console ' +
+      'never has to invent one. Nothing is changed.',
+  })
+  @RequiresPermission(PlatformPermission.RECORDS_DELETE)
+  @ApiStandardErrors()
+  inspectRecord(@Param('kind') kind: string, @Param('id', ParseUUIDPipe) id: string) {
+    return asRecordKind(kind) === 'visit'
+      ? this.records.inspectVisit(id)
+      : this.records.inspectPrescription(id);
+  }
+
+  @Delete('records/visit/:id')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Erase a visit that never reached a clinician',
+    description:
+      'For the intake posted twice or abandoned halfway. Refused the moment anybody decided ' +
+      'anything: approved, refused, prescribed or sent to a pharmacy. Its intake answers and ' +
+      'encounter go with it, being the same event recorded three times.',
+  })
+  @RequiresPermission(PlatformPermission.RECORDS_DELETE)
+  @ApiZodBody(PermanentDeleteDto)
+  @ApiStandardErrors()
+  removeVisit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: PermanentDeleteDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.records.removeVisit(id, body.reason, user);
+  }
+
+  @Delete('records/prescription/:id')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Withdraw a prescription',
+    description:
+      'Marked as entered in error, hidden from the lists, and kept. A signed prescription is ' +
+      'never erased — this is the whole of what can happen to one. Refused once it has shipped, ' +
+      'because the chart would then contradict the dispensing record.',
+  })
+  @RequiresPermission(PlatformPermission.RECORDS_DELETE)
+  @ApiZodBody(PermanentDeleteDto)
+  @ApiStandardErrors()
+  archivePrescription(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: PermanentDeleteDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.records.archivePrescription(id, body.reason, user);
+  }
+
+  @Post('records/prescription/:id/restore')
+  @HttpCode(200)
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Put a withdrawn prescription back',
+    description: 'For when the withdrawal was itself the mistake.',
+  })
+  @RequiresPermission(PlatformPermission.RECORDS_DELETE)
+  @ApiStandardErrors()
+  restorePrescription(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.records.restorePrescription(id, user);
+  }
+
+  // ── time worked ──────────────────────────────────────────────────────────
+
+  @Get('activity/providers')
+  @RequiresPermission(PlatformPermission.WORKFORCE_VIEW)
+  @ApiOperation({
+    summary: 'Hours worked, across the clinician roster',
+    description:
+      'Active time per clinician over the window, busiest first. Derived from recorded actions ' +
+      'rather than from a session timer, so an idle browser counts for nothing.',
+  })
+  @ApiStandardErrors()
+  providerActivity(@Query() query: ProviderActivityQueryDto) {
+    return this.activityService.roster(query.days, query.timeZone);
+  }
+
+  @Get('providers/:id/activity')
+  @RequiresPermission(PlatformPermission.WORKFORCE_VIEW)
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'One clinician’s hours, day by day',
+    description:
+      'A day-by-day series for charting, plus totals. Days with no activity are present and zero, ' +
+      'so the shape of the week is not flattened by omitting them.',
+  })
+  @ApiStandardErrors()
+  oneProviderActivity(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: ProviderActivityQueryDto,
+  ) {
+    return this.activityService.forProvider(id, query.days, query.timeZone);
+  }
+
+  // ── state licences ───────────────────────────────────────────────────────
+
+  @Get('providers/:id/licences')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'The states this clinician is licensed in',
+    description: 'Soonest to expire first, so the ones needing attention are at the top.',
+  })
+  @ApiStandardErrors()
+  licences(@Param('id', ParseUUIDPipe) id: string) {
+    return this.licencesService.list(id);
+  }
+
+  @Post('providers/:id/licences')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Add a state licence',
+    description:
+      'Added by the platform, so it is ACTIVE immediately and the clinician can be routed visits ' +
+      'in that state. A licence the clinician adds for themselves arrives PENDING instead.',
+  })
+  @ApiZodBody(ProviderLicenceDto)
+  @ApiStandardErrors()
+  addLicence(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ProviderLicenceDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.licencesService.add(id, body, user.id, true);
+  }
+
+  @Patch('providers/:id/licences/:licenceId')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiParam({ name: 'licenceId', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Update a state licence',
+    description:
+      'Including its standing. Setting ACTIVE is what turns a licence the clinician added ' +
+      'themselves into one that can be routed against.',
+  })
+  @ApiZodBody(ProviderLicencePatchDto)
+  @ApiStandardErrors()
+  updateLicence(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('licenceId', ParseUUIDPipe) licenceId: string,
+    @Body() body: ProviderLicencePatchDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.licencesService.update(id, licenceId, body, user.id);
+  }
+
+  @Delete('providers/:id/licences/:licenceId')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiParam({ name: 'licenceId', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Remove a state licence',
+    description:
+      'For one entered in error. A licence that has lapsed should be marked EXPIRED rather than ' +
+      'deleted, so the record still shows they once held it.',
+  })
+  @ApiStandardErrors()
+  removeLicence(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('licenceId', ParseUUIDPipe) licenceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.licencesService.remove(id, licenceId, user.id);
+  }
+
   @Delete('providers/:id')
+  @RequiresPermission(PlatformPermission.ACCOUNTS_ARCHIVE)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({
     summary: 'Archive a provider',
@@ -537,6 +871,7 @@ export class GovernanceController {
   }
 
   @Post('providers/:id/restore')
+  @RequiresPermission(PlatformPermission.ACCOUNTS_ARCHIVE)
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({ summary: 'Restore an archived provider' })
@@ -553,6 +888,7 @@ export class GovernanceController {
   // ── pharmacies ───────────────────────────────────────────────────────────
 
   @Delete('pharmacies/:id')
+  @RequiresPermission(PlatformPermission.ACCOUNTS_ARCHIVE)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({
     summary: 'Archive a pharmacy',
@@ -569,6 +905,7 @@ export class GovernanceController {
   }
 
   @Post('pharmacies/:id/restore')
+  @RequiresPermission(PlatformPermission.ACCOUNTS_ARCHIVE)
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({ summary: 'Restore an archived pharmacy' })
@@ -675,6 +1012,7 @@ export class GovernanceController {
   // ── billing ──────────────────────────────────────────────────────────────
 
   @Get('invoices')
+  @RequiresPermission(PlatformPermission.FINANCE_VIEW)
   @ApiOperation({ summary: 'Invoices across every client business' })
   @ApiStandardErrors()
   listInvoices(@Query() query: InvoiceQueryDto) {
@@ -682,6 +1020,7 @@ export class GovernanceController {
   }
 
   @Get('invoices/:id')
+  @RequiresPermission(PlatformPermission.FINANCE_VIEW)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({ summary: 'One invoice, with its lines, payments and cost basis' })
   @ApiStandardErrors()
@@ -690,6 +1029,7 @@ export class GovernanceController {
   }
 
   @Post('prescriptions/:id/invoice')
+  @RequiresPermission(PlatformPermission.FINANCE_MANAGE)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({
     summary: 'Raise a draft invoice for a prescription',
@@ -703,6 +1043,7 @@ export class GovernanceController {
   }
 
   @Post('invoices/:id/issue')
+  @RequiresPermission(PlatformPermission.FINANCE_MANAGE)
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({ summary: 'Issue a draft invoice' })
@@ -717,6 +1058,7 @@ export class GovernanceController {
   }
 
   @Post('invoices/:id/void')
+  @RequiresPermission(PlatformPermission.FINANCE_MANAGE)
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({ summary: 'Void an invoice', description: 'Refused once paid — refund it instead.' })
@@ -731,6 +1073,7 @@ export class GovernanceController {
   }
 
   @Post('invoices/:id/payments')
+  @RequiresPermission(PlatformPermission.FINANCE_MANAGE)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({
     summary: 'Record a payment',
@@ -749,6 +1092,7 @@ export class GovernanceController {
   // ── reports ──────────────────────────────────────────────────────────────
 
   @Get('reports/:kind')
+  @RequiresPermission(PlatformPermission.DATA_EXPORT)
   @ApiParam({ name: 'kind', enum: REPORT_KINDS })
   @ApiQuery({ name: 'format', required: false, enum: ['json', 'csv'] })
   @ApiOperation({
@@ -778,4 +1122,18 @@ export class GovernanceController {
     }
     return result;
   }
+}
+
+/**
+ * The path segment, narrowed.
+ *
+ * `@ApiParam({ enum })` documents the values but does not enforce them, so the
+ * check happens here rather than letting an unknown kind reach a switch that
+ * would silently fall through to pharmacies.
+ */
+function asKind(value: string): Kind {
+  if (!(DELETABLE as readonly string[]).includes(value)) {
+    throw new BadRequestException(`Unknown kind. Expected one of: ${DELETABLE.join(', ')}`);
+  }
+  return value as Kind;
 }

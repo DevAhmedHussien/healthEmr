@@ -22,11 +22,54 @@ datasource db {
 // ══════════════════════════════════════════════════════════════════ enums ══
 
 enum Role {
+  /// The platform's proprietor. Above SUPER_ADMIN and deliberately rare.
+  ///
+  /// The distinction is not seniority, it is reversibility: an owner decides
+  /// which of the irreversible actions each super admin may take, and can take
+  /// them all themselves. Everything a super admin can do, an owner can do —
+  /// the role is a superset, so promoting somebody never removes access.
+  OWNER
   SUPER_ADMIN
   ADMIN
   PROVIDER
   PHARMACY
   PATIENT
+}
+
+/// What a super admin is permitted to do, granted one at a time by an owner.
+///
+/// Only the consequential actions are listed. Reading is governed by role and
+/// recorded in the audit trail; this is for the things that cannot be undone by
+/// clicking again, which is why each is a separate grant rather than a single
+/// "can administer" flag.
+enum PlatformPermission {
+  /// Archive and restore a client business, clinician or pharmacy.
+  ACCOUNTS_ARCHIVE
+  /// Erase a record permanently. Refused whenever anything clinical refers to it.
+  ACCOUNTS_DELETE
+  /// Approve or refuse clinician and pharmacy applications.
+  ONBOARDING_DECIDE
+  /// See revenue, cost of goods, clinician fees and margin — the business model.
+  FINANCE_VIEW
+  /// Issue and void invoices, record payments, set client prices and fees.
+  FINANCE_MANAGE
+  /// Edit the shared catalogue: products, categories and platform pricing.
+  CATALOGUE_MANAGE
+  /// Withdraw a visit or prescription, and erase one that never reached a
+  /// clinician. A signed prescription is never erased, only marked.
+  RECORDS_DELETE
+  /// Open a patient chart without being part of their care.
+  BREAK_THE_GLASS
+  /// Read the platform audit log, including what other administrators did.
+  AUDIT_READ
+  /// See clinician hours and decisions. About people, not patients.
+  WORKFORCE_VIEW
+  /// Download records or reports as a file, beyond every control in the console.
+  DATA_EXPORT
+  /// Add, change and remove the endpoints patient events are posted to.
+  WEBHOOKS_MANAGE
+  /// Issue and revoke the API keys a client business sends visits with.
+  API_KEYS_MANAGE
 }
 
 enum AccountStatus {
@@ -111,6 +154,11 @@ enum Sex {
 }
 
 enum LicenseStatus {
+  /// Added by the clinician themselves and not yet checked by the platform.
+  /// Routing requires ACTIVE, so a licence sitting here cannot be used to take
+  /// visits — which is the point: a clinician must not be able to grant
+  /// themselves prescribing rights in a new state by typing a number in.
+  PENDING
   ACTIVE
   EXPIRED
   SUSPENDED
@@ -443,33 +491,33 @@ model TenantApiKey {
 /// only cares about shipping. Each subscribes to its own events, so neither is
 /// sent traffic it has no use for.
 model TenantWebhook {
-  id           String            @id @default(uuid()) @db.Uuid
-  tenantId     String            @db.Uuid
+  id             String            @id @default(uuid()) @db.Uuid
+  tenantId       String            @db.Uuid
   /// What this endpoint is for, in the operator's words. Two URLs at the same
   /// host are otherwise indistinguishable in a list.
-  name         String            @db.VarChar(120)
-  url          String            @db.VarChar(500)
+  name           String            @db.VarChar(120)
+  url            String            @db.VarChar(500)
   /// The bearer token their endpoint expects from us, encrypted at rest. Never
   /// readable back through the API — it can be replaced, not retrieved.
-  authCipher   String
+  authCipher     String
   /// Signing secret for the request signature, so they can prove the body came
   /// from us and was not altered. Generated here; shown once at creation.
-  secretRef    String            @db.VarChar(255)
-  events       String[]          @default([])
-  isActive     Boolean           @default(true)
+  secretRef      String            @db.VarChar(255)
+  events         String[]          @default([])
+  isActive       Boolean           @default(true)
   /// Consecutive failures. Reset by the first success.
-  failureCount Int               @default(0)
-  lastAttemptAt DateTime?        @db.Timestamptz(6)
-  lastSuccessAt DateTime?        @db.Timestamptz(6)
-  lastError     String?
+  failureCount   Int               @default(0)
+  lastAttemptAt  DateTime?         @db.Timestamptz(6)
+  lastSuccessAt  DateTime?         @db.Timestamptz(6)
+  lastError      String?
   /// Set when the platform stopped trying. A dead endpoint is switched off
   /// rather than retried forever, and the reason says which.
-  disabledAt     DateTime?       @db.Timestamptz(6)
+  disabledAt     DateTime?         @db.Timestamptz(6)
   disabledReason String?
-  createdAt    DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
-  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  deliveries   WebhookDelivery[]
+  createdAt      DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries     WebhookDelivery[]
 
   @@index([tenantId, isActive], map: "tenant_webhooks_tenant_active_idx")
   @@map("tenant_webhooks")
@@ -564,26 +612,39 @@ model TenantProvider {
 // ══════════════════════════════════════════════════════ identity & audit ══
 
 model User {
-  id              String    @id @default(uuid()) @db.Uuid
-  email           String    @unique @db.VarChar(255)
-  passwordHash    String
-  role            Role      @default(PATIENT)
+  id               String               @id @default(uuid()) @db.Uuid
+  email            String               @unique @db.VarChar(255)
+  passwordHash     String
+  role             Role                 @default(PATIENT)
   /// Required for ADMIN, null for every other role.
-  tenantId        String?   @db.Uuid
+  tenantId         String?              @db.Uuid
   /// Which pharmacy this account works for. Staff were previously matched to a
   /// pharmacy by comparing their email to the pharmacy's contact address, which
   /// broke the moment either changed and silently locked the account out.
-  pharmacyId      String?   @db.Uuid
-  firstName       String    @db.VarChar(100)
-  lastName        String    @db.VarChar(100)
-  phone           String?   @db.VarChar(30)
-  avatarUrl       String?   @db.VarChar(500)
-  isEmailVerified Boolean   @default(false)
-  isActive        Boolean   @default(true)
-  mfaEnabled      Boolean   @default(false)
-  lastLoginAt     DateTime? @db.Timestamptz(6)
-  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  pharmacyId       String?              @db.Uuid
+  firstName        String               @db.VarChar(100)
+  lastName         String               @db.VarChar(100)
+  phone            String?              @db.VarChar(30)
+  avatarUrl        String?              @db.VarChar(500)
+  isEmailVerified  Boolean              @default(false)
+  isActive         Boolean              @default(true)
+  mfaEnabled       Boolean              @default(false)
+  /// What this super admin may do, granted individually by an owner.
+  ///
+  /// Empty for every other role: a clinician's capabilities come from their
+  /// licences and a client admin's from their account, and neither is something
+  /// an owner hands out. An OWNER ignores this list and holds everything.
+  permissions      PlatformPermission[] @default([])
+  lastLoginAt      DateTime?            @db.Timestamptz(6)
+  /// Taken out of use, with the account kept. `isActive` says a login is
+  /// refused; these say when it was withdrawn, why, and on whose decision —
+  /// which is what an auditor asks about a staff account that stopped being
+  /// used, and what a retained clinical record needs its author to still have.
+  archivedAt       DateTime?            @db.Timestamptz(6)
+  archivedReason   String?
+  archivedByUserId String?              @db.Uuid
+  createdAt        DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
 
   tenant                  Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   pharmacy                Pharmacy?                @relation("PharmacyStaff", fields: [pharmacyId], references: [id], onDelete: SetNull)
@@ -941,9 +1002,17 @@ model ProviderProfile {
   credentials         String?       @db.VarChar(80)
   specialties         String[]      @default([])
   bio                 String?
-  signatureImageKey   String?       @db.VarChar(512)
   deaNumber           String?       @db.VarChar(40)
   isAcceptingRequests Boolean       @default(true)
+  /// The clinician's handwritten signature, drawn once and held encrypted.
+  ///
+  /// Stored as a PNG data URI through the same AES-256-GCM field encryption as
+  /// PHI. It is not a patient's data, but it is the thing that makes a
+  /// prescription theirs — a readable copy in a database dump is a forgery kit.
+  signatureImage      String?
+  /// Typed alongside the drawing, the way they write their own name.
+  signatureName       String?       @db.VarChar(200)
+  signatureCapturedAt DateTime?     @db.Timestamptz(6)
   maxOpenRequests     Int           @default(25)
   /// The admin account this provider is "assigned" to for directory and
   /// reporting. They may still be contracted to others via TenantProvider —
@@ -959,8 +1028,8 @@ model ProviderProfile {
   createdAt           DateTime      @default(now()) @db.Timestamptz(6)
   updatedAt           DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
 
-  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  primaryTenant   Tenant?               @relation("ProviderPrimaryTenant", fields: [primaryTenantId], references: [id], onDelete: SetNull)
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  primaryTenant   Tenant?                   @relation("ProviderPrimaryTenant", fields: [primaryTenantId], references: [id], onDelete: SetNull)
   earnings        ProviderEarning[]
   feeSchedules    ProviderFeeSchedule[]
   licenses        ProviderLicense[]
@@ -1250,43 +1319,43 @@ model PrescriptionRequest {
 /// deny a third, and each approved line becomes its own Prescription — possibly
 /// at a different pharmacy.
 model PrescriptionRequestItem {
-  id               String       @id @default(uuid()) @db.Uuid
-  requestId        String       @db.Uuid
-  medicationId     String       @db.Uuid
+  id                 String       @id @default(uuid()) @db.Uuid
+  requestId          String       @db.Uuid
+  medicationId       String       @db.Uuid
   /// The kit the client actually ordered, as they sent it. Kept because it is
   /// what identifies the product at the dispensing pharmacy — the cost of that
   /// fill is read from the kit, not from the clinical medication record.
-  kitCode          String?      @db.VarChar(160)
-  nameText         String       @db.VarChar(250)
-  strength         String       @db.VarChar(120)
-  quantity         String       @db.VarChar(50)
-  refills          String       @db.VarChar(50)
-  daysSupply       String?      @db.VarChar(50)
-  decision         ItemDecision @default(PENDING)
-  approvedStrength String?      @db.VarChar(120)
-  approvedQuantity String?      @db.VarChar(50)
-  approvedRefills  String?      @db.VarChar(50)
+  kitCode            String?      @db.VarChar(160)
+  nameText           String       @db.VarChar(250)
+  strength           String       @db.VarChar(120)
+  quantity           String       @db.VarChar(50)
+  refills            String       @db.VarChar(50)
+  daysSupply         String?      @db.VarChar(50)
+  decision           ItemDecision @default(PENDING)
+  approvedStrength   String?      @db.VarChar(120)
+  approvedQuantity   String?      @db.VarChar(50)
+  approvedRefills    String?      @db.VarChar(50)
   /// Required when decision is MODIFIED or DENIED.
-  decisionReason   String?
+  decisionReason     String?
   /// Who decides this line. Normally every line on a visit carries the same
   /// provider — the router only splits a visit when no single clinician is
   /// credentialed for every category on it.
-  assignedProviderId String?   @db.Uuid
-  assignedAt         DateTime? @db.Timestamptz(6)
+  assignedProviderId String?      @db.Uuid
+  assignedAt         DateTime?    @db.Timestamptz(6)
   /// What the telehealth business charged the patient for this line, in whole
   /// cents. Per line rather than per order, because revenue has to be
   /// attributable to a category and a medication for the analytics to mean
   /// anything. Optional: a partner that sends no price simply reports none.
-  quotedPriceCents Int?
-  decidedAt        DateTime?    @db.Timestamptz(6)
-  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+  quotedPriceCents   Int?
+  decidedAt          DateTime?    @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @db.Timestamptz(6)
 
-  request      PrescriptionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  medication   Medication          @relation(fields: [medicationId], references: [id], onDelete: Restrict)
+  request          PrescriptionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  medication       Medication          @relation(fields: [medicationId], references: [id], onDelete: Restrict)
   /// SetNull rather than Cascade: losing who was going to review a line must
   /// never take the line — and the patient's order — with it.
-  assignedProvider ProviderProfile? @relation("AssignedLines", fields: [assignedProviderId], references: [id], onDelete: SetNull)
-  prescription Prescription?
+  assignedProvider ProviderProfile?    @relation("AssignedLines", fields: [assignedProviderId], references: [id], onDelete: SetNull)
+  prescription     Prescription?
 
   @@index([requestId], map: "prescription_request_items_request_idx")
   @@index([assignedProviderId, decision], map: "prescription_request_items_assignee_idx")
@@ -1350,9 +1419,19 @@ model Prescription {
   providerNameSnapshot  String               @db.VarChar(200)
   licenseNumberSnapshot String               @db.VarChar(80)
   licenseStateSnapshot  String               @db.VarChar(2)
+  /// The signature as it was when this was signed, frozen for the same reason
+  /// the licence is: a clinician who later redraws their signature has not
+  /// changed what they put on this prescription. Encrypted, like the original.
+  signatureSnapshot     String?
+  signatureNameSnapshot String?              @db.VarChar(200)
   signedAt              DateTime             @db.Timestamptz(6)
   status                PrescriptionStatus   @default(SIGNED)
   voidedAt              DateTime?            @db.Timestamptz(6)
+  /// Why it was withdrawn, and by whom. Plain columns rather than a relation,
+  /// matching PrescriptionRequest: attribution on a retained medical record
+  /// must not acquire a foreign key that a later account deletion can follow.
+  voidedReason          String?
+  voidedByUserId        String?              @db.Uuid
   voidReason            String?
   createdAt             DateTime             @default(now()) @db.Timestamptz(6)
   updatedAt             DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
