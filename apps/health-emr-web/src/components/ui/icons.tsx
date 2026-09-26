@@ -55,6 +55,15 @@ export const PlusIcon = (props: IconProps) => (
   </Svg>
 );
 
+/** The overflow affordance: the row's actions, collapsed on a narrow screen. */
+export const MoreIcon = (props: IconProps) => (
+  <Svg {...props}>
+    <circle cx="5" cy="12" r="1" />
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="19" cy="12" r="1" />
+  </Svg>
+);
+
 export const EditIcon = (props: IconProps) => (
   <Svg {...props}>
     <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
