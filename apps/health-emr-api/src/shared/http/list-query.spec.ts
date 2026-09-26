@@ -1,4 +1,11 @@
-import { buildOrderBy, offsetSkipTake, safeSort, searchAcross, listResponse } from './list-query';
+import {
+  buildOrderBy,
+  listResponse,
+  mergeWhere,
+  offsetSkipTake,
+  safeSort,
+  searchAcross,
+} from './list-query';
 import type { ListQuery } from '@health-emr/types';
 
 const query = (over: Partial<ListQuery> = {}): ListQuery => ({
@@ -77,5 +84,48 @@ describe('list-query helpers', () => {
   it('computes total pages, never fewer than one', () => {
     expect(listResponse([], 0, query(), []).pageInfo.totalPages).toBe(1);
     expect(listResponse([], 51, query({ pageSize: 25 }), []).pageInfo.totalPages).toBe(3);
+  });
+});
+
+describe('mergeWhere', () => {
+  it('merges scalar keys the way a spread would', () => {
+    expect(mergeWhere({ tenantId: 't1' }, { voidedAt: null })).toEqual({
+      tenantId: 't1',
+      voidedAt: null,
+    });
+  });
+
+  it('skips fragments a conditional left undefined', () => {
+    expect(mergeWhere({ tenantId: 't1' }, undefined, null)).toEqual({ tenantId: 't1' });
+  });
+
+  it('composes two AND fragments instead of keeping only the last', () => {
+    // The bug this exists to prevent: spreading these leaves the second alone.
+    const merged = mergeWhere(
+      { AND: [{ status: 'APPROVED' }] },
+      { AND: [{ patient: { lastName: { contains: 'Marsh' } } }] },
+    );
+
+    expect(merged).toEqual({
+      AND: [{ status: 'APPROVED' }, { patient: { lastName: { contains: 'Marsh' } } }],
+    });
+  });
+
+  it('flattens rather than nesting, so SQL depth does not grow per filter', () => {
+    const merged = mergeWhere({ AND: [{ a: 1 }, { b: 2 }] }, { AND: [{ c: 3 }] });
+    expect(merged.AND).toHaveLength(3);
+  });
+
+  it('moves a repeated key under AND rather than overwriting it', () => {
+    // Two searches over the same relation both produce `OR`. Both have to hold.
+    const merged = mergeWhere({ OR: [{ a: 1 }] }, { OR: [{ b: 2 }] });
+    expect(merged).toEqual({ OR: [{ a: 1 }], AND: [{ OR: [{ b: 2 }] }] });
+  });
+
+  it('keeps a lone AND fragment addressable', () => {
+    expect(mergeWhere({ tenantId: 't1' }, { AND: [{ voidedAt: null }] })).toEqual({
+      tenantId: 't1',
+      AND: [{ voidedAt: null }],
+    });
   });
 });

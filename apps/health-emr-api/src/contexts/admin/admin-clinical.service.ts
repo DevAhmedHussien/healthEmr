@@ -14,6 +14,7 @@ import { ObjectStorageService } from '@/shared/storage/object-storage.service';
 import {
   buildOrderBy,
   listResponse,
+  mergeWhere,
   offsetSkipTake,
   safeSort,
   searchAcross,
@@ -210,19 +211,19 @@ export class AdminClinicalService {
   ) {
     const mine: Prisma.PrescriptionRequestWhereInput = { tenantId, ...NOT_WITHDRAWN };
 
-    const where: Prisma.PrescriptionRequestWhereInput = {
-      ...mine,
-      ...(query.stage ? visitStageWhere(query.stage) : {}),
-      ...(query.categorySlug ? { category: { slug: query.categorySlug } } : {}),
-      ...(searchAcross(query.q, [
+    const where: Prisma.PrescriptionRequestWhereInput = mergeWhere<Prisma.PrescriptionRequestWhereInput>(
+      mine,
+      query.stage ? visitStageWhere(query.stage) : undefined,
+      query.categorySlug ? { category: { slug: query.categorySlug } } : undefined,
+      searchAcross(query.q, [
         'externalMasterId',
         'patient.mrn',
         'patient.firstName',
         'patient.lastName',
         'patient.email',
-      ]) ?? {}),
-      ...columnFilterWhere(query, ADMIN_VISIT_FILTERS),
-    };
+      ]),
+      columnFilterWhere(query, ADMIN_VISIT_FILTERS),
+    );
 
     const sort = safeSort(query.sort, ADMIN_VISIT_SORT, 'createdAt');
 

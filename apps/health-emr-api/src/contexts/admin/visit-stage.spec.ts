@@ -1,4 +1,5 @@
 import { VISIT_STAGES, visitStage } from '@health-emr/types';
+import { mergeWhere } from '@/shared/http/list-query';
 import { visitStageWhere } from './visit-stage.filter';
 
 /**
@@ -163,6 +164,35 @@ describe('visit stage', () => {
     // nothing about which combination broke.
     expect(disagreements.slice(0, 10)).toEqual([]);
     expect(checked).toBeGreaterThan(1000);
+  });
+
+  /**
+   * A stage filter and a column filter both arrive as `AND`.
+   *
+   * Spread into one object literal the second erased the first, so picking
+   * "Shipped" and then typing a patient's name listed that patient's visits in
+   * every stage — a wider answer than the screen claimed to be showing.
+   * `mergeWhere` composes them, and this asserts the stage still narrows.
+   */
+  it('keeps the stage predicate when a column filter is merged alongside it', () => {
+    // Shaped like `columnFilterWhere` output, and true of every row, so any
+    // change in what is selected is the stage clause being lost.
+    const columnFilter = { AND: [{ OR: [{ status: { in: [...REQUEST] } }] }] };
+    const dropped: string[] = [];
+
+    for (const row of rows()) {
+      for (const stage of VISIT_STAGES) {
+        const alone = matches(visitStageWhere(stage, NOW) as Record<string, unknown>, row);
+        const merged = matches(
+          mergeWhere(visitStageWhere(stage, NOW) as Record<string, unknown>, columnFilter),
+          row,
+        );
+
+        if (alone !== merged) dropped.push(`${stage}: ${describe_(row)}`);
+      }
+    }
+
+    expect(dropped.slice(0, 10)).toEqual([]);
   });
 
   it('calls an approved order stuck once it has sat unsent for hours', () => {

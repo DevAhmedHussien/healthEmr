@@ -103,3 +103,43 @@ export function searchAcross(
     }),
   };
 }
+
+/**
+ * Combines `where` fragments so that none of them can silently erase another.
+ *
+ * Spreading fragments into one object literal looks equivalent and is not: two
+ * fragments carrying the same key — and `AND` is the common one, produced by
+ * both `columnFilterWhere` and `visitStageWhere` — leave only the last. The
+ * filter the operator typed wins and the stage they picked disappears, so the
+ * list quietly answers a wider question than the one on screen.
+ *
+ * Scalar keys are merged as before; anything that would collide is pushed into
+ * a single `AND`, where Prisma composes the clauses rather than choosing
+ * between them.
+ */
+export function mergeWhere<W extends Record<string, unknown>>(
+  ...fragments: ReadonlyArray<W | Record<string, unknown> | undefined | null>
+): W {
+  const merged: Record<string, unknown> = {};
+  const and: Array<Record<string, unknown>> = [];
+
+  for (const fragment of fragments) {
+    if (!fragment) continue;
+
+    for (const [key, value] of Object.entries(fragment)) {
+      if (key === 'AND') {
+        // Flattened rather than nested: one AND of many clauses reads the same
+        // to Prisma and keeps the generated SQL from growing a level per filter.
+        and.push(...(Array.isArray(value) ? value : [value as Record<string, unknown>]));
+      } else if (key in merged) {
+        and.push({ [key]: value });
+      } else {
+        merged[key] = value;
+      }
+    }
+  }
+
+  if (and.length) merged.AND = and;
+
+  return merged as W;
+}

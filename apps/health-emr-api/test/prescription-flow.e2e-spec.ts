@@ -168,7 +168,7 @@ describe('prescription flow (e2e)', () => {
 
   it('1. a tenant submits an intake and a patient record is created', async () => {
     const response = await request(app.getHttpServer())
-      .post('/partner/v1/visit/createNoPayPhotos')
+      .post('/partner/v1/visits')
       .set('Authorization', `Bearer ${apiKey}`)
       .send({
         formObj: {
@@ -507,7 +507,7 @@ describe('prescription flow (e2e)', () => {
     // test is about.
     const refusedMaster = `${masterId}-refused`;
     await request(app.getHttpServer())
-      .post('/partner/v1/visit/createNoPayPhotos')
+      .post('/partner/v1/visits')
       .set('Authorization', `Bearer ${apiKey}`)
       .send(intakeFor(MED_ID, refusedMaster))
       .expect(200);
@@ -699,6 +699,32 @@ describe('prescription flow (e2e)', () => {
       .expect(200);
     expect(pending.body.data.map((row: { id: string }) => row.id)).not.toContain(visit.id);
 
+    /**
+     * A stage filter and a column filter at the same time.
+     *
+     * Both reach Prisma as `AND`, and merging them by spreading one object into
+     * another left only the last — so picking a stage and then typing a name
+     * quietly dropped the stage and listed that patient's visits from every
+     * stage. Asserted here, through the real SQL, because that is the layer the
+     * loss was invisible at: each filter alone behaved perfectly.
+     */
+    const surname = String(visit.patient.name).split(' ').pop();
+
+    const both = await request(app.getHttpServer())
+      .get(`/v1/admin/visits?stage=SHIPPED&patient=${surname}&pageSize=50`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(both.body.data.map((row: { id: string }) => row.id)).toContain(visit.id);
+    expect(both.body.data.every((row: { stage: string }) => row.stage === 'SHIPPED')).toBe(true);
+
+    // The sharp end: this visit matches the name but not the stage, so a stage
+    // clause that survived the merge excludes it and one that did not does not.
+    const wrongStage = await request(app.getHttpServer())
+      .get(`/v1/admin/visits?stage=PENDING_REVIEW&patient=${surname}&pageSize=50`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(wrongStage.body.data.map((row: { id: string }) => row.id)).not.toContain(visit.id);
+
     // The business collected this intake, so it reads it back.
     const detail = await request(app.getHttpServer())
       .get(`/v1/admin/visits/${visit.id}`)
@@ -800,7 +826,7 @@ describe('prescription flow (e2e)', () => {
     await prisma.pharmacyProduct.update({ where: { id: product.id }, data: { isActive: false } });
     try {
       const response = await request(app.getHttpServer())
-        .post('/partner/v1/visit/createNoPayPhotos')
+        .post('/partner/v1/visits')
         .set('Authorization', `Bearer ${apiKey}`)
         .send(intakeFor(ordered, `${masterId}-unstocked`))
         .expect(400);
@@ -810,7 +836,7 @@ describe('prescription flow (e2e)', () => {
 
       // And the lookup a client builds its form from stops offering it.
       const catalogue = await request(app.getHttpServer())
-        .get('/partner/v1/pharmacies/first-choice/medications')
+        .get('/partner/v1/pharmacies/first-choice/catalog')
         .set('Authorization', `Bearer ${apiKey}`)
         .expect(200);
       expect(catalogue.body.data.map((row: { medId: string }) => row.medId)).not.toContain(ordered);
@@ -821,7 +847,7 @@ describe('prescription flow (e2e)', () => {
 
   it('12b. and is accepted again once the pharmacy carries it', async () => {
     const stocked = await request(app.getHttpServer())
-      .get('/partner/v1/pharmacies/first-choice/medications')
+      .get('/partner/v1/pharmacies/first-choice/catalog')
       .set('Authorization', `Bearer ${apiKey}`)
       .expect(200);
 
@@ -830,7 +856,7 @@ describe('prescription flow (e2e)', () => {
     if (!first) return;
 
     await request(app.getHttpServer())
-      .post('/partner/v1/visit/createNoPayPhotos')
+      .post('/partner/v1/visits')
       .set('Authorization', `Bearer ${apiKey}`)
       .send(intakeFor(first.medId, `${masterId}-stocked`))
       .expect(200);

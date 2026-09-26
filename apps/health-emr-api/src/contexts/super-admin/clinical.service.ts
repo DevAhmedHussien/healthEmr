@@ -8,6 +8,7 @@ import { AuditService } from '@/shared/audit/audit.service';
 import {
   buildOrderBy,
   listResponse,
+  mergeWhere,
   offsetSkipTake,
   safeSort,
   searchAcross,
@@ -426,20 +427,20 @@ export class ClinicalService {
   async listVisits(
     query: ListQuery & { stage?: VisitStage; tenantId?: string; categorySlug?: string },
   ) {
-    const where: Prisma.PrescriptionRequestWhereInput = {
-      ...(query.stage ? visitStageWhere(query.stage) : {}),
-      ...(query.tenantId ? { tenantId: query.tenantId } : {}),
-      ...(query.categorySlug ? { category: { slug: query.categorySlug } } : {}),
-      ...(searchAcross(query.q, [
+    const where: Prisma.PrescriptionRequestWhereInput = mergeWhere<Prisma.PrescriptionRequestWhereInput>(
+      query.stage ? visitStageWhere(query.stage) : undefined,
+      query.tenantId ? { tenantId: query.tenantId } : undefined,
+      query.categorySlug ? { category: { slug: query.categorySlug } } : undefined,
+      searchAcross(query.q, [
         'externalMasterId',
         'patient.mrn',
         'patient.firstName',
         'patient.lastName',
         'patient.email',
         'patient.phone',
-      ]) ?? {}),
-      ...columnFilterWhere(query, VISIT_FILTERS),
-    };
+      ]),
+      columnFilterWhere(query, VISIT_FILTERS),
+    );
 
     const sort = safeSort(query.sort, VISIT_SORT, 'createdAt');
 
