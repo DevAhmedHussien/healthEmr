@@ -26,6 +26,20 @@ export function forget(key: string): void {
 }
 
 /**
+ * Replace one key's answer with a corrected copy.
+ *
+ * For the row that has just been deleted. Dropping it from the component's
+ * state alone is not enough: the cache is what the next mount reads, and the
+ * refetch that follows a write reads it too — so the row would reappear for
+ * the moment between the two, which is exactly the flicker the optimistic
+ * removal exists to avoid.
+ */
+export function patchCached<T>(key: string, body: ListResponse<T>): void {
+  if (!CACHE.has(key)) return;
+  CACHE.set(key, { at: Date.now(), body: body as ListResponse<unknown> });
+}
+
+/**
  * Empties the cache.
  *
  * Called on sign-out, and after any request that changed something. A cached

@@ -6,6 +6,7 @@ import { api, ApiError } from '@/lib/api';
 import { Alert, Button, Field, Input } from '@/components/ui/primitives';
 import { Modal } from '@/components/ui/modal';
 import { RowActions, type RowAction } from '@/components/table/row-actions';
+import { useRowMutation } from '@/components/table/data-table';
 import { usePermissions } from '@/lib/permissions';
 
 export type RecordKind = 'visit' | 'prescription';
@@ -123,6 +124,7 @@ function RecordDialog({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const mutation = useRowMutation();
   const [reason, setReason] = React.useState('');
   const [typed, setTyped] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -165,6 +167,14 @@ function RecordDialog({
         await api(path, { method: 'POST' });
       }
       onClose();
+
+      // Erasing takes the row off now. Withdrawing leaves it in place with a
+      // withdrawn badge, so the table is only asked to reconcile — unless the
+      // list it is in hides withdrawn records, in which case the reconcile is
+      // what removes it, and correctly so.
+      if (action === 'delete') mutation?.drop(id);
+      else mutation?.refresh();
+
       router.refresh();
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'That did not work.');

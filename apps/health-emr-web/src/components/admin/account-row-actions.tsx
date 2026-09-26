@@ -6,6 +6,7 @@ import { api, ApiError } from '@/lib/api';
 import { Alert, Badge, Button, Field, Input } from '@/components/ui/primitives';
 import { Modal } from '@/components/ui/modal';
 import { RowActions, type RowAction } from '@/components/table/row-actions';
+import { useRowMutation } from '@/components/table/data-table';
 import { usePermissions } from '@/lib/permissions';
 
 export type AccountKind = 'tenant' | 'provider' | 'pharmacy';
@@ -134,6 +135,7 @@ function ConfirmDialog({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const mutation = useRowMutation();
   const [reason, setReason] = React.useState('');
   const [typed, setTyped] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -201,6 +203,16 @@ function ConfirmDialog({
         });
       }
       onClose();
+
+      // The table fetches its own rows, so it has to be told. A deleted row
+      // goes now and the server is asked for the rest afterwards; an archived
+      // one stays put with a different badge, so there is nothing to remove
+      // and only the reconcile is wanted.
+      if (action === 'delete') mutation?.drop(id);
+      else mutation?.refresh();
+
+      // And the page around it — headline counts and anything else rendered
+      // on the server — which is all `router.refresh()` was ever doing here.
       router.refresh();
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'That did not work.');
