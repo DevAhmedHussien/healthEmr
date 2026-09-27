@@ -76,9 +76,19 @@ export function DataTable<T extends Record<string, unknown>>({
   const filterKeys = React.useMemo(() => filters.map((filter) => filter.key), [filters]);
   const table$ = useTableState(filterKeys);
   const { state, push, toggleSort, setFilter, clearAll, activeFilterCount } = table$;
-  const { rows, pageInfo, meta, loading, refreshing, error, refetch } = useListQuery<T>(
+  const { rows, pageInfo, meta, loading, refreshing, error, refetch, dropRow } = useListQuery<T>(
     endpoint,
     state,
+  );
+
+  // Handed to the cells through context rather than through the column
+  // definitions. Every table memoises its columns with an empty dependency
+  // list, so a callback threaded that way would be captured once and go stale
+  // — and giving each of them a dependency array to maintain is five more
+  // places to get it wrong.
+  const mutation = React.useMemo<RowMutation>(
+    () => ({ refresh: refetch, drop: dropRow }),
+    [refetch, dropRow],
   );
 
   const searchRegionId = `${React.useId()}-column-search`;
@@ -194,6 +204,7 @@ export function DataTable<T extends Record<string, unknown>>({
   );
 
   return (
+    <RowMutationContext.Provider value={mutation}>
     <div className="ar-card overflow-hidden">
       <TableToolbar
         search={draft}
@@ -425,7 +436,32 @@ export function DataTable<T extends Record<string, unknown>>({
         />
       ) : null}
     </div>
+    </RowMutationContext.Provider>
   );
+}
+
+/**
+ * How a cell tells its table that a row has changed.
+ *
+ * `drop` takes the row off screen straight away and reconciles with the server
+ * behind it; `refresh` just reconciles, for a change that leaves the row in
+ * place — an archive, where the row stays and its status badge moves.
+ *
+ * Both are needed. `router.refresh()`, which these used to call, re-runs the
+ * server components and does nothing at all to a table that fetches its own
+ * rows from the API — so a deleted row sat there until the page was reloaded
+ * by hand, which reads as the delete having silently failed.
+ */
+export interface RowMutation {
+  refresh: () => void;
+  drop: (id: string) => void;
+}
+
+const RowMutationContext = React.createContext<RowMutation | null>(null);
+
+/** Null outside a DataTable, so a row action can live anywhere without knowing. */
+export function useRowMutation(): RowMutation | null {
+  return React.useContext(RowMutationContext);
 }
 
 /**

@@ -9,6 +9,7 @@ import { DataTable } from "@/components/table/data-table";
 import type { FilterDef } from "@/components/table/table-toolbar";
 import { StateList } from "@/components/portal/state-list";
 import { Email } from "@/components/table/cells";
+import { AccountRowActions } from "@/components/admin/account-row-actions";
 
 interface Row extends Record<string, unknown> {
   id: string;
@@ -164,6 +165,25 @@ export function ProviderDirectory() {
           <Badge tone={statusTone(row.original.status)}>
             {row.original.status.toLowerCase()}
           </Badge>
+        ),
+      },
+      {
+        id: "actions",
+        // Named, and named the same in every table. A blank header saves a
+        // little width and costs the column its place in the row a screen
+        // reader announces — and leaves sighted readers to work out from the
+        // icons what the column is for.
+        header: "Actions",
+        enableSorting: false,
+        // Last and right-aligned: an action column that sorts or takes width
+        // from a header is a column pretending to be data.
+        cell: ({ row }) => (
+          <AccountRowActions
+            kind="provider"
+            id={row.original.id}
+            name={row.original.name}
+            archived={row.original.status === "ARCHIVED"}
+          />
         ),
       },
     ],

@@ -13,6 +13,7 @@ import type { FilterDef } from "@/components/table/table-toolbar";
 import { Email, Num, Phone, When } from "@/components/table/cells";
 import { api, ApiError } from "@/lib/api";
 import { UserPlusIcon } from "@/components/ui/icons";
+import { AccountRowActions } from "@/components/admin/account-row-actions";
 
 const FORM_ID = "create-admin";
 
@@ -181,6 +182,25 @@ export function AdminAccounts() {
         id: "createdAt",
         header: "Joined",
         cell: ({ row }) => <When value={row.original.createdAt} />,
+      },
+      {
+        id: "actions",
+        // Named, and named the same in every table. A blank header saves a
+        // little width and costs the column its place in the row a screen
+        // reader announces — and leaves sighted readers to work out from the
+        // icons what the column is for.
+        header: "Actions",
+        enableSorting: false,
+        // Last and right-aligned: an action column that sorts or takes width
+        // from a header is a column pretending to be data.
+        cell: ({ row }) => (
+          <AccountRowActions
+            kind="tenant"
+            id={row.original.id}
+            name={row.original.name}
+            archived={row.original.status === "ARCHIVED"}
+          />
+        ),
       },
     ],
     [],

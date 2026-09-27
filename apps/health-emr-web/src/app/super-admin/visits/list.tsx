@@ -20,6 +20,7 @@ import {
   When,
 } from "@/components/table/cells";
 import { Badge } from "@/components/ui/primitives";
+import { RecordRowActions } from "@/components/admin/record-row-actions";
 
 interface Row extends Record<string, unknown> {
   id: string;
@@ -283,6 +284,20 @@ export function VisitList() {
         id: "updatedAt",
         header: "Last updated",
         cell: ({ row }) => <When value={row.original.updatedAt} />,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        // Last and right-aligned, as in every other table.
+        cell: ({ row }) => (
+          <RecordRowActions
+            kind="visit"
+            id={row.original.id}
+            label={row.original.masterId}
+            archived={row.original.voidedAt !== null}
+          />
+        ),
       },
     ],
     [],

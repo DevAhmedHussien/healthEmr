@@ -4,7 +4,7 @@ import * as React from 'react';
 import type { ListResponse } from '@health-emr/types';
 import { toSearchParams } from '@health-emr/types';
 import type { TableState } from './use-table-state';
-import { FRESH_MS, cached, forget, loadList } from '@/lib/list-cache';
+import { FRESH_MS, cached, forget, loadList, patchCached } from '@/lib/list-cache';
 
 interface Result<T> {
   rows: T[];
@@ -16,6 +16,40 @@ interface Result<T> {
   refreshing: boolean;
   error: string | null;
   refetch: () => void;
+  /**
+   * Take a row off the table now, and reconcile with the server after.
+   *
+   * For a row that has just been deleted. `refetch` alone is a round-trip the
+   * person is made to watch while the thing they deleted sits there, which
+   * reads as the delete having failed.
+   */
+  dropRow: (id: string) => void;
+}
+
+/**
+ * One page, minus a row, with its counts corrected.
+ *
+ * Pure, and separate from the hook so it can be tested without a DOM. Returns
+ * the page it was given, by identity, when the row is not on it — which is the
+ * signal to reconcile with the server and change nothing locally.
+ */
+export function withoutRow<T>(page: ListResponse<T>, id: string): ListResponse<T> {
+  const data = page.data.filter((row) => (row as { id?: string }).id !== id);
+  if (data.length === page.data.length) return page;
+
+  const total = Math.max(0, page.pageInfo.total - (page.data.length - data.length));
+
+  return {
+    ...page,
+    data,
+    pageInfo: {
+      ...page.pageInfo,
+      total,
+      // Recomputed rather than left alone, so the pager does not keep offering
+      // a page that no longer exists.
+      totalPages: Math.max(1, Math.ceil(total / page.pageInfo.pageSize)),
+    },
+  };
 }
 
 /**
@@ -91,6 +125,23 @@ export function useListQuery<T>(endpoint: string, state: TableState): Result<T> 
     };
   }, [key, nonce]);
 
+  const dropRow = React.useCallback(
+    (id: string) => {
+      const refetch = () => setNonce((value) => value + 1);
+      if (!snapshot) return refetch();
+
+      const next = withoutRow(snapshot, id);
+      // Not on this page — another table's row, or a page that has since moved.
+      // Still worth refetching: something changed even if it was not here.
+      if (next === snapshot) return refetch();
+
+      setSnapshot(next);
+      patchCached(key, next);
+      refetch();
+    },
+    [snapshot, key],
+  );
+
   return {
     rows: snapshot?.data ?? [],
     pageInfo: snapshot?.pageInfo ?? null,
@@ -99,5 +150,6 @@ export function useListQuery<T>(endpoint: string, state: TableState): Result<T> 
     refreshing,
     error,
     refetch: () => setNonce((value) => value + 1),
+    dropRow,
   };
 }

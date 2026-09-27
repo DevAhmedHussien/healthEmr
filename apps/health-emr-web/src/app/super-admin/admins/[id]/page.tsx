@@ -125,6 +125,24 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ i
   if (!profile) notFound();
 
   const { tenant, counts, money: m } = profile;
+
+  /**
+   * Who works for this client now, and who used to.
+   *
+   * Ending a contract sets `endedAt` rather than deleting the link, so that a
+   * prescription signed for this client three years ago can still say who
+   * signed it. That is right, and it is not a reason to keep the person in a
+   * list headed "clinicians on this roster" — which read as though the
+   * contract had not ended at all, and left the row sitting there after the
+   * button had plainly worked.
+   *
+   * So: the roster is the current contracts, and the ended ones are shown
+   * below as what they are. They are not hidden, because an ended contract
+   * with money still owed is exactly the row somebody needs to find.
+   */
+  const roster = profile.providers.filter((provider) => provider.contracted);
+  const formerProviders = profile.providers.filter((provider) => !provider.contracted);
+
   const owed = profile.providers.reduce((sum, provider) => sum + provider.owedCents, 0);
   const peak = Math.max(1, ...profile.volumeByMonth.map((point) => point.prescriptions));
 
@@ -374,7 +392,7 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ i
               }
             />
           </div>
-          {profile.providers.length === 0 ? (
+          {roster.length === 0 ? (
             <EmptyState
               title="No clinicians attached"
               hint="Intakes for this client cannot be routed until one is."
@@ -392,7 +410,7 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ i
                 </tr>
               </thead>
               <tbody>
-                {profile.providers.map((provider) => (
+                {roster.map((provider) => (
                   <tr key={provider.id}>
                     <td>
                       <Link href={`/super-admin/providers/${provider.id}`} className="font-medium">
@@ -400,7 +418,6 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ i
                       </Link>
                       <span className="block text-[0.75rem] text-[var(--ar-text-faint)]">
                         {provider.credentials ?? '—'}
-                        {provider.contracted ? '' : ' · contract ended'}
                         {provider.acceptingWork ? '' : ' · not accepting work'}
                       </span>
                     </td>
@@ -409,23 +426,59 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ i
                     <td className="tabular-nums">{provider.prescriptionsSigned}</td>
                     <td className="tabular-nums">{money(provider.owedCents)}</td>
                     <td>
-                      {provider.contracted ? (
-                        <ActionDialog
-                          label="End"
-                          description={`Ends ${provider.name}'s contract with this client. The link is kept, not deleted, so prescriptions they signed here stay explicable.`}
-                          path={`v1/super-admin/admins/${tenant.id}/roster/remove`}
-                          body={{ providerId: provider.id }}
-                          variant="ghost"
-                          confirmLabel="End contract"
-                          successMessage="Contract ended."
-                        />
-                      ) : null}
+                      <ActionDialog
+                        label="End"
+                        description={`Ends ${provider.name}'s contract with this client. They move to past clinicians below; the link is kept, not deleted, so prescriptions they signed here stay explicable.`}
+                        path={`v1/super-admin/admins/${tenant.id}/roster/remove`}
+                        body={{ providerId: provider.id }}
+                        variant="ghost"
+                        confirmLabel="End contract"
+                        successMessage="Contract ended."
+                      />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </TableWrap>
           )}
+
+          {formerProviders.length > 0 ? (
+            <div className="border-t border-[var(--ar-border)] p-6">
+              <h3 className="text-[0.8rem] font-medium uppercase tracking-wide text-[var(--ar-text-muted)]">
+                Past clinicians
+              </h3>
+              <p className="mt-1 text-[0.8rem] text-[var(--ar-text-faint)]">
+                Contracts that have ended. Kept so the prescriptions they signed here still say who
+                signed them — and so anything still owed can be found.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {formerProviders.map((provider) => (
+                  <li
+                    key={provider.id}
+                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[0.85rem]"
+                  >
+                    <Link
+                      href={`/super-admin/providers/${provider.id}`}
+                      className="font-medium text-[var(--ar-text)]"
+                    >
+                      {provider.name}
+                    </Link>
+                    <span className="text-[var(--ar-text-faint)]">
+                      {provider.prescriptionsSigned} signed · {provider.reviews} reviewed
+                      {provider.owedCents > 0 ? (
+                        // The one thing here that still needs doing. An ended
+                        // contract with an unpaid balance is the row somebody
+                        // comes looking for, so it does not whisper.
+                        <span className="ml-2 font-medium text-[var(--ar-on-warning)]">
+                          {money(provider.owedCents)} still owed
+                        </span>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </Card>
       </div>
 

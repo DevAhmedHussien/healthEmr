@@ -8,7 +8,13 @@ import { DirectoryService } from './directory.service';
 import { AccountsService } from './accounts.service';
 import { ClinicalService } from './clinical.service';
 import { ActivityService } from './activity.service';
+import { PractitionersModule } from '@/contexts/practitioners/practitioners.module';
 import { GovernanceService } from './governance.service';
+import { IdentityModule } from '@/contexts/identity/identity.module';
+import { OwnerController } from './owner.controller';
+import { OwnerService } from './owner.service';
+import { PermanentDeleteService } from './permanent-delete.service';
+import { ClinicalRecordsService } from './clinical-records.service';
 import { TenantProfileService } from './tenant-profile.service';
 import { BillingService } from './billing.service';
 import { StuckOrderService } from './stuck-orders.service';
@@ -25,8 +31,14 @@ import { TenancyModule } from '@/contexts/tenancy/tenancy.module';
  * the second changes state and records who changed it.
  */
 @Module({
-  imports: [PharmacyModule, TenancyModule, WebhooksModule],
-  controllers: [SuperAdminController, GovernanceController],
+  imports: [
+    PharmacyModule,
+    TenancyModule,
+    WebhooksModule,
+    PractitionersModule,
+    IdentityModule,
+  ],
+  controllers: [SuperAdminController, GovernanceController, OwnerController],
   providers: [
     OverviewService,
     RevenueService,
@@ -35,6 +47,9 @@ import { TenancyModule } from '@/contexts/tenancy/tenancy.module';
     ClinicalService,
     ActivityService,
     GovernanceService,
+    OwnerService,
+    PermanentDeleteService,
+    ClinicalRecordsService,
     TenantProfileService,
     BillingService,
     StuckOrderService,

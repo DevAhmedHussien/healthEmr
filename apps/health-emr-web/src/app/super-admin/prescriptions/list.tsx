@@ -20,6 +20,7 @@ import {
 } from "@/components/table/cells";
 import Link from "next/link";
 import { RerouteSelected, type SelectedPrescription } from "./reroute-selected";
+import { RecordRowActions } from "@/components/admin/record-row-actions";
 
 interface Row extends Record<string, unknown> {
   id: string;
@@ -261,6 +262,22 @@ export function PrescriptionList() {
         id: "updatedAt",
         header: "Last updated",
         cell: ({ row }) => <When value={row.original.updatedAt} />,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        // The delete icon here is permanently disabled and says why: a
+        // prescription exists only because a clinician signed it, so
+        // withdrawing is the whole of what can happen to one.
+        cell: ({ row }) => (
+          <RecordRowActions
+            kind="prescription"
+            id={row.original.id}
+            label={row.original.masterId}
+            archived={row.original.status === "VOIDED"}
+          />
+        ),
       },
     ],
     [],
