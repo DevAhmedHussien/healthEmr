@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import { Alert, Badge, Card, CardHeader, statusTone } from '@/components/ui/primitives';
 import { VisitPhotos, type VisitPhoto } from '@/components/portal/visit-photos';
 import { formatDateTime, formatDob, formatPhone } from '@/lib/format';
@@ -94,7 +94,7 @@ export default async function ReviewVisit({ params }: { params: Promise<{ id: st
   // used to read the queue list instead, which meant a clinician decided from
   // the medication lines alone — without the questionnaire, the allergies, or
   // the identity document.
-  const visit = await serverApi<Visit>(`v1/clinic/visits/${id}`).catch(() => null);
+  const visit = await serverApi<Visit>(`v1/clinic/visits/${id}`).catch(swallow(null));
   if (!visit) notFound();
 
   const decided = visit.status === 'APPROVED' || visit.status === 'DENIED';

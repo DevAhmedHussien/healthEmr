@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import { Alert, Badge, Card, CardHeader, TableWrap, statusTone } from '@/components/ui/primitives';
 import { formatDateTime } from '@/lib/format';
 import { ActionDialog } from '@/components/admin/action-dialog';
@@ -72,9 +72,7 @@ function splitQuestion(text: string): { question: string; options: string[] } {
 
 export default async function QuestionnairePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const qa = await serverApi<Questionnaire>(`v1/super-admin/visits/${id}/questionnaire`).catch(
-    () => null,
-  );
+  const qa = await serverApi<Questionnaire>(`v1/super-admin/visits/${id}/questionnaire`).catch(swallow(null));
   if (!qa) notFound();
 
   return (

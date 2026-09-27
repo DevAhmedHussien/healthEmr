@@ -11,7 +11,7 @@ import {
   UsersIcon,
 } from '@/components/ui/icons';
 import { notFound } from 'next/navigation';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import {
   Badge,
   Card,
@@ -119,10 +119,8 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ i
   const { id } = await params;
 
   const [profile, history] = await Promise.all([
-    serverApi<TenantProfile>(`v1/super-admin/admins/${id}/profile`).catch(() => null),
-    serverApi<ActivityEntryView[]>(`v1/super-admin/activity/Tenant/${id}`).catch(
-      () => [] as ActivityEntryView[],
-    ),
+    serverApi<TenantProfile>(`v1/super-admin/admins/${id}/profile`).catch(swallow(null)),
+    serverApi<ActivityEntryView[]>(`v1/super-admin/activity/Tenant/${id}`).catch(swallow([] as ActivityEntryView[])),
   ]);
   if (!profile) notFound();
 

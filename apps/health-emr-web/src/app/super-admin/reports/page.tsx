@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import { Card, CardHeader, EmptyState, TableWrap } from '@/components/ui/primitives';
 import { formatNumber } from '@/lib/format';
 import { DownloadIcon } from '@/components/ui/icons';
@@ -60,7 +60,7 @@ export default async function ReportsPage() {
   const reports = await Promise.all(
     REPORTS.map(async (report) => ({
       ...report,
-      data: await serverApi<Report>(`v1/super-admin/reports/${report.kind}`).catch(() => null),
+      data: await serverApi<Report>(`v1/super-admin/reports/${report.kind}`).catch(swallow(null)),
     })),
   );
 

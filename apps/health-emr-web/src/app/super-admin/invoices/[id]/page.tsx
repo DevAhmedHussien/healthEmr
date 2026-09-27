@@ -6,7 +6,7 @@ import {
   CreditCardIcon,
 } from '@/components/ui/icons';
 import { notFound } from 'next/navigation';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import {
   Badge,
   Card,
@@ -75,10 +75,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const { id } = await params;
 
   const [invoice, history] = await Promise.all([
-    serverApi<Invoice>(`v1/super-admin/invoices/${id}`).catch(() => null),
-    serverApi<ActivityEntryView[]>(`v1/super-admin/activity/Invoice/${id}`).catch(
-      () => [] as ActivityEntryView[],
-    ),
+    serverApi<Invoice>(`v1/super-admin/invoices/${id}`).catch(swallow(null)),
+    serverApi<ActivityEntryView[]>(`v1/super-admin/activity/Invoice/${id}`).catch(swallow([] as ActivityEntryView[])),
   ]);
   if (!invoice) notFound();
 

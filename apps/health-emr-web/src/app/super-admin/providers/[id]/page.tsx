@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { BarChartIcon, CheckCircleIcon, CreditCardIcon, RxPadIcon } from '@/components/ui/icons';
 import { notFound } from 'next/navigation';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import {
   Badge,
   Card,
@@ -73,10 +73,8 @@ const duration = (minutes: number | null) => {
 export default async function ProviderProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [provider, history] = await Promise.all([
-    serverApi<ProviderProfile>(`v1/super-admin/providers/${id}`).catch(() => null),
-    serverApi<ActivityEntryView[]>(`v1/super-admin/activity/ProviderProfile/${id}`).catch(
-      () => [] as ActivityEntryView[],
-    ),
+    serverApi<ProviderProfile>(`v1/super-admin/providers/${id}`).catch(swallow(null)),
+    serverApi<ActivityEntryView[]>(`v1/super-admin/activity/ProviderProfile/${id}`).catch(swallow([] as ActivityEntryView[])),
   ]);
   if (!provider) notFound();
 

@@ -7,7 +7,7 @@ import {
   PulseIcon,
 } from '@/components/ui/icons';
 import { notFound } from 'next/navigation';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import {
   Alert,
   Badge,
@@ -125,7 +125,7 @@ interface PatientRecord {
 
 export default async function PatientRecordPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const patient = await serverApi<PatientRecord>(`v1/super-admin/patients/${id}`).catch(() => null);
+  const patient = await serverApi<PatientRecord>(`v1/super-admin/patients/${id}`).catch(swallow(null));
   if (!patient) notFound();
 
   const activeAllergies = patient.allergies.filter((a) => a.status === 'ACTIVE');

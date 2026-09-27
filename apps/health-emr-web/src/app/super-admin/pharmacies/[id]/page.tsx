@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { CreditCardIcon, PackageIcon, PillIcon, PulseIcon } from '@/components/ui/icons';
 import { notFound } from 'next/navigation';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import { Catalog } from '@/app/dispensary/catalog/catalog';
 import {
   Badge,
@@ -94,10 +94,8 @@ interface PharmacyProfile {
 export default async function PharmacyProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [pharmacy, history] = await Promise.all([
-    serverApi<PharmacyProfile>(`v1/super-admin/pharmacies/${id}`).catch(() => null),
-    serverApi<ActivityEntryView[]>(`v1/super-admin/activity/Pharmacy/${id}`).catch(
-      () => [] as ActivityEntryView[],
-    ),
+    serverApi<PharmacyProfile>(`v1/super-admin/pharmacies/${id}`).catch(swallow(null)),
+    serverApi<ActivityEntryView[]>(`v1/super-admin/activity/Pharmacy/${id}`).catch(swallow([] as ActivityEntryView[])),
   ]);
   if (!pharmacy) notFound();
 

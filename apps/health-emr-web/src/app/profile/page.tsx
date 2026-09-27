@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import { Badge, Card, CardHeader } from '@/components/ui/primitives';
 import { ROLE_LABEL } from '@/components/portal/nav';
 import { PortalShell } from '@/components/portal/portal-shell';
@@ -36,7 +36,7 @@ export default async function ProfilePage() {
   const user = session?.user as { role?: Role; name?: string; email?: string } | undefined;
   if (!user?.role) redirect('/login');
 
-  const me = await serverApi<Me>('v1/auth/profile').catch(() => null);
+  const me = await serverApi<Me>('v1/auth/profile').catch(swallow(null));
 
   return (
     <PortalShell role={user.role} name={user.name ?? ''} email={user.email ?? ''}>

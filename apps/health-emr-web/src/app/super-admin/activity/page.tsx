@@ -1,4 +1,4 @@
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import { Card } from '@/components/ui/primitives';
 import { ActivityList } from './list';
 import { formatDateShort, formatDateTime, formatNumber } from '@/lib/format';
@@ -16,9 +16,7 @@ interface Integrity {
 }
 
 export default async function ActivityPage() {
-  const integrity = await serverApi<Integrity>('v1/super-admin/activity/integrity').catch(
-    () => null,
-  );
+  const integrity = await serverApi<Integrity>('v1/super-admin/activity/integrity').catch(swallow(null));
 
   return (
     <div className="space-y-5">

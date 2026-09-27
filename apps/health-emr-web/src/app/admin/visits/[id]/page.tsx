@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { VISIT_STAGE_MEANING, type VisitStage } from '@health-emr/types';
-import { serverApi } from '@/lib/server-api';
+import { serverApi, swallow } from '@/lib/server-api';
 import { Alert, Badge, Card, CardHeader, TableWrap, statusTone } from '@/components/ui/primitives';
 import { StageBadge } from '@/components/portal/stage-badge';
 import { formatDateTime, formatDob, formatMoney, formatPhone } from '@/lib/format';
@@ -121,7 +121,7 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default async function AdminVisitPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const visit = await serverApi<Visit>(`v1/admin/visits/${id}`).catch(() => null);
+  const visit = await serverApi<Visit>(`v1/admin/visits/${id}`).catch(swallow(null));
   if (!visit) notFound();
 
   const stuck = visit.stage === 'STUCK';
