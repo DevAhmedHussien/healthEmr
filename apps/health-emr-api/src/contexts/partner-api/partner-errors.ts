@@ -15,7 +15,7 @@ export const PartnerError = {
    * wrong when a visit requests several.
    */
   NOT_STOCKED: (medId: string, pharmacy: string) =>
-    `${pharmacy} does not stock ${medId}. Call GET /partner/v1/pharmacies/{pharmacyId}/medications for what it carries.`,
+    `${pharmacy} does not stock ${medId}. Call GET /partner/v1/pharmacies/{pharmacyId}/catalog for what it carries.`,
   BRANDED_WITH_COMPOUNDING: 'Branded med with compounding pharmacy',
   STATE_NOT_VALID: 'State not valid',
   DUPLICATE_MASTER_ID: 'Duplicate masterId',

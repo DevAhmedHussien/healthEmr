@@ -51,7 +51,8 @@ export const updateVisitSchema = z
       })
       .min(1, 'patientPreference must contain at least one medication'),
     pharmacyId: required('pharmacyId', 120),
-    masterId: required('masterId', 255),
+    /** Optional: the path names the visit. Sent here too, it must agree. */
+    masterId: z.string().trim().max(255).optional(),
     /**
      * The same key as the Authorization header carries.
      *
@@ -66,7 +67,8 @@ export const updateVisitSchema = z
 
 export const cancelVisitSchema = z
   .object({
-    masterId: required('masterId', 255),
+    /** Optional: the path names the visit. Sent here too, it must agree. */
+    masterId: z.string().trim().max(255).optional(),
     apiKey: required('apiKey', 200),
     reason: required('reason', 500),
   })

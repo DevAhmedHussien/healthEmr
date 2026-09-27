@@ -1,8 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import {
+  ConnectedSocket,
+  MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
@@ -14,6 +17,7 @@ import type { AppConfig } from '@/shared/config/configuration';
 import { Inject } from '@nestjs/common';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { DomainEvent, type DomainEventEnvelope } from '@/shared/events/domain-events';
+import type { ChatTicketClaims } from './chat-ticket';
 
 /**
  * Real-time delivery for chat.
@@ -43,10 +47,23 @@ export class MessagingGateway implements OnGatewayConnection, OnGatewayDisconnec
       const token = String(client.handshake.auth?.token ?? '');
       if (!token) throw new Error('No token');
 
-      const claims = await this.jwt.verifyAsync<AccessTokenClaims>(token, {
-        secret: this.config.jwt.accessSecret,
-      });
+      /**
+       * Either an access token or a chat ticket opens this.
+       *
+       * A browser cannot send the access token — it is held server-side on
+       * purpose — so it presents a ticket minted for it, good for a minute and
+       * good for nothing else. A server-side caller may still use the access
+       * token directly.
+       */
+      const claims = await this.jwt.verifyAsync<AccessTokenClaims & Partial<ChatTicketClaims>>(
+        token,
+        { secret: this.config.jwt.accessSecret },
+      );
 
+      if (!claims.sub) throw new Error('No subject');
+
+      // Which threads, read now rather than trusted from the token: membership
+      // is the authorisation model, and a token cannot vouch for it.
       const memberships = await this.prisma.raw.chatParticipant.findMany({
         where: { userId: claims.sub, leftAt: null },
         select: { threadId: true },
@@ -62,6 +79,32 @@ export class MessagingGateway implements OnGatewayConnection, OnGatewayDisconnec
       // Say nothing about why — an unauthenticated socket gets no information.
       client.disconnect(true);
     }
+  }
+
+  /**
+   * Joins a conversation opened after the socket connected.
+   *
+   * A clinician asking a patient a question creates the thread there and then,
+   * and without this their socket would not be in the room until they next
+   * reloaded — which is the reload this whole mechanism exists to remove.
+   * Membership is re-checked here; the client naming a room does not grant it.
+   */
+  @SubscribeMessage('thread.watch')
+  async watch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { threadId?: string },
+  ): Promise<void> {
+    const userId = client.data?.userId as string | undefined;
+    const threadId = body?.threadId;
+    if (!userId || !threadId) return;
+
+    const participant = await this.prisma.raw.chatParticipant.findUnique({
+      where: { threadId_userId: { threadId, userId } },
+      select: { leftAt: true },
+    });
+    if (!participant || participant.leftAt) return;
+
+    await client.join(`thread:${threadId}`);
   }
 
   handleDisconnect(client: Socket): void {

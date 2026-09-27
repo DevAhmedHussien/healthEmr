@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { StatesPicker } from '@/components/form/state-chips';
 import { api, ApiError } from '@/lib/api';
 import {
   Alert,
@@ -256,7 +257,7 @@ function ProfileDialog({
     contactEmail: profile.contactEmail ?? '',
     contactPhone: profile.contactPhone ?? '',
     ncpdpId: profile.ncpdpId ?? '',
-    statesServed: profile.statesServed.join(', '),
+    statesServed: profile.statesServed,
   });
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -271,10 +272,7 @@ function ProfileDialog({
           contactEmail: form.contactEmail.trim() || null,
           contactPhone: form.contactPhone.trim() || null,
           ncpdpId: form.ncpdpId.trim() || null,
-          statesServed: form.statesServed
-            .split(/[,\s]+/)
-            .map((state) => state.trim().toUpperCase())
-            .filter(Boolean),
+          statesServed: form.statesServed,
         }),
       });
       onSaved();
@@ -329,10 +327,14 @@ function ProfileDialog({
             onChange={(event) => setForm({ ...form, ncpdpId: event.target.value })}
           />
         </Field>
-        <Field label="States you ship to" hint="Two-letter codes, comma separated.">
-          <Input
+        <Field
+          label="States you ship to"
+          hint="A patient outside these states will not be routed to you. Leave empty for no restriction."
+        >
+          <StatesPicker
+            ariaLabel="States you ship to"
             value={form.statesServed}
-            onChange={(event) => setForm({ ...form, statesServed: event.target.value })}
+            onChange={(statesServed) => setForm({ ...form, statesServed })}
           />
         </Field>
       </div>

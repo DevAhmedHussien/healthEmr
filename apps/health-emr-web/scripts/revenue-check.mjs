@@ -11,7 +11,7 @@
  */
 import { chromium } from 'playwright';
 
-const WEB = 'http://localhost:3000';
+const WEB = 'http://localhost:3005';
 
 const browser = await chromium.launch({ channel: 'chrome' });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });

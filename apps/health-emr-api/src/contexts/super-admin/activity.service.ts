@@ -17,7 +17,13 @@ export const ACTIVITY_SORT = ['createdAt', 'action'] as const;
  */
 export const ACTIVITY_FILTERS = {
   // `action` likewise: the endpoint already accepts it.
-  actor: { path: 'actorEmail', kind: 'text' },
+  // The column shows a name. The email is kept searchable too, and is the
+  // only thing left to search once the account itself has been deleted.
+  actor: {
+    path: 'actorEmail',
+    kind: 'name',
+    paths: ['actor.firstName', 'actor.lastName', 'actorEmail'],
+  },
   tenant: { path: 'tenantSlug', kind: 'text' },
   entity: { path: 'entityType', kind: 'text' },
   ip: { path: 'ip', kind: 'text' },

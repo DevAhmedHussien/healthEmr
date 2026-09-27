@@ -16,11 +16,16 @@ export const PHARMACY_DIRECTORY_SORT = ['name', 'slug', 'createdAt', 'status'] a
 
 /** Filterable columns of the provider directory, keyed by the column id. */
 export const PROVIDER_DIRECTORY_FILTERS = {
-  lastName: { path: 'user.lastName', kind: 'text' },
+  lastName: { path: 'user.lastName', kind: 'name', paths: ['user.firstName', 'user.lastName'] },
   email: { path: 'user.email', kind: 'text' },
   npi: { path: 'npi', kind: 'text' },
   states: { path: 'licenses[].state', kind: 'text' },
-  categories: { path: 'categories[].category.name', kind: 'text' },
+  // The column lists slugs; a reader may well type the full name instead.
+  categories: {
+    path: 'categories[].category.name',
+    kind: 'name',
+    paths: ['categories[].category.name', 'categories[].category.slug'],
+  },
   assignedAdmin: { path: 'tenantLinks[].tenant.name', kind: 'text' },
   // `status` is deliberately absent: the endpoint already takes it as a
   // validated enum, and redeclaring it here as loose text would replace that
@@ -241,7 +246,6 @@ export class DirectoryService {
       deaNumber: provider.deaNumber,
       specialties: provider.specialties,
       bio: provider.bio,
-      signatureImageKey: provider.signatureImageKey,
       status: provider.status,
       suspendedAt: provider.suspendedAt,
       suspendedReason: provider.suspendedReason,
@@ -368,6 +372,9 @@ export class DirectoryService {
       slug: pharmacy.slug,
       integrationType: pharmacy.platform,
       ncpdpId: pharmacy.ncpdpId,
+      /// Where this pharmacy will ship. Routing excludes it for a patient in a
+      /// state that is not here, so it belongs on the screen that can change it.
+      statesServed: pharmacy.statesServed,
       contactEmail: pharmacy.contactEmail,
       contactPhone: pharmacy.contactPhone,
       dispensesCompounded: pharmacy.dispensesCompounded,

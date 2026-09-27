@@ -93,7 +93,7 @@ export class ExternalFetchService {
       entityId: patient.id,
       patientId: patient.id,
       tenantId,
-      after: { via: 'patient/externalFetch' },
+      after: { via: 'patients/by-phone' },
     });
 
     return {
@@ -169,7 +169,7 @@ export class ExternalFetchService {
       entityId: visit.id,
       patientId: visit.patientId,
       tenantId,
-      after: { via: 'visit/externalFetch', masterId },
+      after: { via: 'visits/{masterId}', masterId },
     });
 
     const patient = visit.patient;
@@ -177,6 +177,10 @@ export class ExternalFetchService {
 
     return {
       masterId,
+      // Ours for this visit. Needed to post uploads against it, which is why it
+      // travels here rather than only in the response to the submission — a
+      // client that lost it had no way to ask for it again.
+      visitId: visit.id,
       visitStatus: VISIT_STATUS[visit.status] ?? 'pending',
       updateTimestamp: visit.updatedAt.toISOString(),
       resolvedStatus: resolved ? 'closed' : 'open',

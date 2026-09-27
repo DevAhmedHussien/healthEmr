@@ -33,9 +33,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ten
   const payload = (await req.json()) as { path?: string; body?: unknown };
   // Only the two calls a form legitimately makes. Without this the route is an
   // open proxy onto the partner API with a key attached.
-  const allowed = new Set(['visit/createNoPayPhotos', 'visit/photos']);
+  const allowed = /^(visits|visits\/[A-Za-z0-9-]+\/uploads)$/;
   const path = String(payload.path ?? '');
-  if (!allowed.has(path)) {
+  if (!allowed.test(path)) {
     return NextResponse.json({ error: 'Not a permitted call.' }, { status: 400 });
   }
 
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tena
   if (!key) return NextResponse.json({ error: 'Unknown form.' }, { status: 404 });
 
   const path = req.nextUrl.searchParams.get('path') ?? '';
-  const allowed = /^(questionnaire\/[A-Za-z]+|pharmacies|pharmacies\/[a-z0-9-]+\/medications)$/;
+  const allowed = /^(intake-forms\/[A-Za-z]+|pharmacies|pharmacies\/[a-z0-9-]+\/catalog)$/;
   if (!allowed.test(path)) {
     return NextResponse.json({ error: 'Not a permitted call.' }, { status: 400 });
   }

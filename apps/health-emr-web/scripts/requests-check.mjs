@@ -11,7 +11,7 @@
  */
 import { chromium } from 'playwright';
 
-const WEB = process.env.WEB_URL ?? 'http://localhost:3000';
+const WEB = process.env.WEB_URL ?? 'http://localhost:3005';
 
 let failures = 0;
 const ok = (label, passed, detail) => {

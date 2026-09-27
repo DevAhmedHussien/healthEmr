@@ -17,6 +17,8 @@ import { Stat } from '@/components/ui/stat';
 import { DocumentViewer, type ViewableDocument } from '@/components/onboarding/document-viewer';
 import { formatDateShort, formatDateTime } from '@/lib/format';
 import { LicenceTable } from './licence-table';
+import { AddLicence } from '@/components/admin/licence-editor';
+import { ActivityPanel } from '@/components/charts/activity-panel';
 
 interface ProviderProfile {
   id: string;
@@ -37,6 +39,7 @@ interface ProviderProfile {
   assignedAdmin: { id: string; name: string } | null;
   contractedAdmins: Array<{ id: string; name: string }>;
   licenses: Array<{
+    id: string;
     state: string;
     licenseNumber: string;
     status: string;
@@ -172,12 +175,25 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
 
       <div className="grid gap-5 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-5">
+          <ActivityPanel
+            path={`v1/super-admin/providers/${provider.id}/activity`}
+            title="Hours worked"
+            subtitle="Active time per day, worked out from recorded actions rather than a session timer."
+          />
+
           <Card>
             <CardHeader
               title="State licences"
               subtitle="Routing only ever offers a visit to a provider holding a current licence in the patient's state."
+              action={
+                <AddLicence
+                  providerId={provider.id}
+                  held={provider.licenses.map((licence) => licence.state)}
+                  scope="platform"
+                />
+              }
             />
-            <LicenceTable licences={provider.licenses} />
+            <LicenceTable licences={provider.licenses} providerId={provider.id} />
           </Card>
 
           <Card>

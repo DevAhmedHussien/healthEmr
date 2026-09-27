@@ -7,7 +7,7 @@
  */
 import { chromium } from 'playwright';
 
-const BASE = process.env.BASE ?? 'http://localhost:3000';
+const BASE = process.env.BASE ?? 'http://localhost:3005';
 const browser = await chromium.launch({ channel: 'chrome' });
 const page = await browser.newPage();
 

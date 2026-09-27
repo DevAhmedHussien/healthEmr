@@ -25,6 +25,15 @@ export type ColumnFilterKind =
    */
   | 'list'
   /**
+   * A person's name, spread across more than one column.
+   *
+   * A cell reading "Elena Marsh" is two fields joined for display, and matching
+   * only one of them means typing what is on screen finds nothing — which is
+   * exactly what somebody does first. Declare every field the name is built
+   * from in `paths`.
+   */
+  | 'name'
+  /**
    * A column showing how many related rows there are.
    *
    * Only "none" and "any" are offered, because those are the questions the
@@ -36,6 +45,12 @@ export type ColumnFilterKind =
   | 'presence';
 
 export interface ColumnFilter {
+  /**
+   * The fields a `name` filter searches, in display order.
+   *
+   * Ignored by every other kind, which addresses one field through `path`.
+   */
+  paths?: readonly string[];
   /**
    * Dotted path into the model, e.g. `patient.lastName`.
    *
@@ -98,6 +113,12 @@ export function columnFilterWhere(
     const value = raw.trim();
     if (!value) continue;
 
+    if (filter.kind === 'name') {
+      const clause = nameClause(filter.paths ?? [filter.path], value);
+      if (clause) clauses.push(clause);
+      continue;
+    }
+
     if (filter.kind === 'presence') {
       if (value !== 'none' && value !== 'any') continue;
       clauses.push(nest(filter.path, value === 'none' ? { none: {} } : { some: {} }));
@@ -119,6 +140,40 @@ export function columnFilterWhere(
  * handing the database a value its column type will refuse.
  */
 const MATCHES_NOTHING = { in: [] as string[] };
+
+/**
+ * Matches a name typed the way it is displayed.
+ *
+ * Every word has to match one of the name fields, and any of them will do. That
+ * covers the three things people actually type: a first name, a surname, and
+ * the whole thing as it appears in the cell — in either order, because a list
+ * sorted by surname invites "Marsh Elena" as readily as "Elena Marsh".
+ *
+ * A middle word that matches nothing narrows the result to nothing, which is
+ * the honest answer rather than a loose match on one half of what was asked.
+ */
+function nameClause(
+  paths: readonly string[],
+  value: string,
+): Record<string, unknown> | undefined {
+  const words = value
+    .split(/\s+/)
+    // People paste the cell rather than retype it, so the words arrive wearing
+    // whatever punctuation joined them on screen: `Austin,` from an address,
+    // `(AZ)` from a licence. Held literally, none of those match the column
+    // they came from. Inner punctuation stays — `AZ-12345` is one word, and
+    // `O'Brien` is a name.
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+    .filter(Boolean)
+    .slice(0, 5);
+  if (!words.length || !paths.length) return undefined;
+
+  return {
+    AND: words.map((word) => ({
+      OR: paths.map((path) => nest(path, { contains: word, mode: 'insensitive' })),
+    })),
+  };
+}
 
 /**
  * Turns `patient.user.lastName` into `{ patient: { user: { lastName: … } } }`,
@@ -159,6 +214,10 @@ function conditionFor(kind: ColumnFilterKind, value: string, enumBacked: boolean
 
     case 'list':
       return { has: value };
+
+    // Handled before this point: it spans several fields rather than one.
+    case 'name':
+      return undefined;
 
     // Handled before this point: it produces a whole clause rather than a
     // condition to nest under a field.

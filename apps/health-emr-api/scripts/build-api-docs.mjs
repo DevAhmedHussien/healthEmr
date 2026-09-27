@@ -13,11 +13,35 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+const METHOD_ORDER = ['get', 'post', 'put', 'patch', 'delete'];
+
 const specUrl = process.argv.includes('--spec')
   ? process.argv[process.argv.indexOf('--spec') + 1]
   : 'http://localhost:4000/docs-json';
 
-const spec = await fetch(specUrl).then((r) => r.json());
+const spec = await fetch(specUrl)
+  .then((response) => response.json())
+  .catch(() => {
+    console.error(`Could not read the spec from ${specUrl}. Is the API running?`);
+    process.exit(1);
+  });
+
+// Refuse rather than overwrite. A spec that came back empty — the API restarting,
+// a wrong URL — would otherwise replace a complete reference with a blank page,
+// and the failure only shows up when somebody opens the file looking for an
+// endpoint that is no longer in it.
+const operationCount = Object.values(spec.paths ?? {}).reduce(
+  (total, item) =>
+    total + Object.keys(item).filter((key) => METHOD_ORDER.includes(key)).length,
+  0,
+);
+if (operationCount < 50) {
+  console.error(
+    `The spec at ${specUrl} carries only ${operationCount} operations, which is too few to be ` +
+      'the whole API. Refusing to overwrite the reference with it.',
+  );
+  process.exit(1);
+}
 
 /**
  * Who calls each group of endpoints.
@@ -117,17 +141,17 @@ const GROUPS = [
   },
 ];
 
-/** The partner routes, which Swagger deliberately does not carry. */
-const PARTNER = [
-  {
-    method: 'post',
-    path: '/partner/v1/visit/createNoPayPhotos',
-    summary: 'Submit an intake and create a visit',
-    description:
-      'The main integration point. Creates the patient if they are new, records the questionnaire, ' +
-      'routes the visit to a clinician licensed in the patient’s state, and returns a visit id. ' +
-      'Idempotent on <code>masterId</code> per tenant: a retried call is refused rather than ' +
-      'creating a second visit.',
+/**
+ * What the decorators cannot say, keyed by `METHOD /path`.
+ *
+ * The partner section itself is built from the spec, like every other section,
+ * so a new endpoint appears here the moment it exists. This adds only the parts
+ * a decorator has no room for — a worked example of the payload, and the table
+ * of refusals an integrator will actually hit. An earlier version of this file
+ * listed the endpoints by hand and was nine behind by the time anyone noticed.
+ */
+const PARTNER_EXTRAS = {
+  'POST /partner/v1/visits': {
     body: `{
   "masterId": "your-unique-id",
   "company": "yourSlug",
@@ -157,34 +181,7 @@ const PARTNER = [
       ['Duplicate masterId', 'That <code>masterId</code> already exists for this client.'],
     ],
   },
-  {
-    method: 'get',
-    path: '/partner/v1/pharmacies',
-    summary: 'Pharmacies this client may name',
-    description:
-      'Every pharmacy on this client’s roster, with what each is able to dispense. The <code>pharmacyId</code> ' +
-      'returned here is what goes on an intake.',
-  },
-  {
-    method: 'get',
-    path: '/partner/v1/pharmacies/{pharmacyId}/medications',
-    summary: 'What one pharmacy carries',
-    description:
-      'The list an order form should be built from. Each entry’s <code>kitId</code> is what goes in ' +
-      '<code>patientPreference[].medId</code>. An intake naming a kit the pharmacy does not carry is refused, ' +
-      'so offering anything outside this list produces a rejected visit.',
-  },
-  {
-    method: 'get',
-    path: '/partner/v1/visit/{masterId}',
-    summary: 'One visit',
-    description:
-      'Status, the decision on each requested line, and the shipment once it exists. Scoped to the ' +
-      'calling client, so another client’s visit is not found rather than forbidden.',
-  },
-];
-
-const METHOD_ORDER = ['get', 'post', 'put', 'patch', 'delete'];
+};
 
 function collect() {
   const seen = new Set();
@@ -202,7 +199,9 @@ function collect() {
   }
 
   const partnerGroup = groups.find((group) => group.id === 'partner');
-  partnerGroup.operations = PARTNER;
+  for (const operation of partnerGroup.operations) {
+    Object.assign(operation, PARTNER_EXTRAS[`${operation.method.toUpperCase()} ${operation.path}`] ?? {});
+  }
 
   for (const group of groups) {
     group.operations.sort(

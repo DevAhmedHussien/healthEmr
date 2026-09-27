@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import type { AdminVisitPatch, AuthenticatedUser } from '@health-emr/types';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
+import { EventBus } from '@/shared/events/event-bus.service';
+import { DomainEvent } from '@/shared/events/domain-events';
 import { EntitlementsService } from '@/contexts/tenancy/entitlements.service';
 
 /**
@@ -30,6 +32,7 @@ export class VisitVoidService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly entitlements: EntitlementsService,
+    private readonly events: EventBus,
   ) {}
 
   async void(visitId: string, reason: string, actor: AuthenticatedUser, force = false) {
@@ -121,6 +124,10 @@ export class VisitVoidService {
         ...(shipped.length ? { forcedAfterShipping: shipped.map((order) => order.status) } : {}),
       },
     });
+
+    // Published rather than posted directly: a client's endpoint being slow
+    // must not slow an operator withdrawing a visit.
+    this.events.publish(DomainEvent.VisitVoided, { requestId: visitId, reason });
 
     return {
       id: visitId,

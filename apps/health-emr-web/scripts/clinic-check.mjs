@@ -13,7 +13,7 @@
  */
 import { chromium } from 'playwright';
 
-const WEB = 'http://localhost:3000';
+const WEB = 'http://localhost:3005';
 // Lindqvist rather than Reyes: this queue carries visits that have an identity
 // document on them, so the photo path is actually exercised rather than skipped.
 const EMAIL = process.env.PROVIDER_EMAIL ?? 'dr.lindqvist@healthemr.test';

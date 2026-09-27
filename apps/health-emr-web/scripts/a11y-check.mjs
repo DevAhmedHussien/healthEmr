@@ -9,7 +9,7 @@
  */
 import { chromium } from 'playwright';
 
-const WEB = process.env.WEB_URL ?? 'http://localhost:3000';
+const WEB = process.env.WEB_URL ?? 'http://localhost:3005';
 
 const ROLES = [
   {

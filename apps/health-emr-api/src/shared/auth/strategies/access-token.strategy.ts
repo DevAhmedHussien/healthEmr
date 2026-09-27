@@ -20,15 +20,16 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   /**
-   * The token is only a claim. We re-read the user so a deactivated account or a
-   * changed role takes effect immediately rather than at the next token refresh.
+   * The token is only a claim. We re-read the user so a deactivated account, a
+   * changed role or a revoked permission takes effect immediately rather than at
+   * the next token refresh.
    */
   async validate(payload: AccessTokenClaims): Promise<AuthenticatedUser> {
     const user = await this.prisma.raw.user.findUnique({
       where: { id: payload.sub },
       select: {
         id: true, email: true, firstName: true, lastName: true,
-        role: true, tenantId: true, isActive: true,
+        role: true, tenantId: true, isActive: true, permissions: true,
       },
     });
 
@@ -51,6 +52,9 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
       lastName: user.lastName,
       role: user.role,
       tenantId: user.tenantId,
+      // Read here rather than carried in the token, so a grant an owner revoked
+      // a minute ago is already gone rather than living out the token's life.
+      permissions: user.permissions,
     };
   }
 }

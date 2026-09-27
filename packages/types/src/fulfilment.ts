@@ -31,6 +31,45 @@ export const shipOrderSchema = z
     }
   });
 
+/**
+ * Where the parcel got to.
+ *
+ * Reported by the pharmacy, because the pharmacy is who talks to the carrier —
+ * no tracking provider is connected here, and inventing one would mean
+ * publishing statuses nobody actually observed.
+ *
+ * Distinct from shipping: `ship` says the parcel was handed over, these say
+ * what happened to it afterwards, which is the question patients actually ask.
+ */
+export const trackingUpdateSchema = z
+  .object({
+    status: z.enum([
+      'PACKAGE_IN_TRANSIT',
+      'PACKAGE_OUT_FOR_DELIVERY',
+      'PACKAGE_DELIVERED',
+      'PACKAGE_DELIVERY_FAILED',
+    ]),
+    /** When the carrier says it happened. Defaults to now. */
+    occurredAt: z.string().trim().datetime({ offset: true }).optional(),
+    /** The carrier's own wording, if the pharmacy has it. */
+    trackerStatus: z.string().trim().max(200).optional(),
+    /** The carrier's own id for the shipment, if different from the tracking number. */
+    trackerId: z.string().trim().max(200).optional(),
+    trackingUrl: z.string().trim().url().max(2000).optional(),
+    /** Why it failed. Required on a failure, because "failed" alone is not actionable. */
+    note: z.string().trim().max(1000).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.status === 'PACKAGE_DELIVERY_FAILED' && !value.note?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['note'],
+        message: 'Say what went wrong — somebody has to act on this',
+      });
+    }
+  });
+
 export const flagOrderIssueSchema = z
   .object({
     reason: z.enum([
@@ -59,6 +98,7 @@ export const pharmacyQueueQuerySchema = z
   .strict();
 
 export type ShipOrderInput = z.infer<typeof shipOrderSchema>;
+export type TrackingUpdateInput = z.infer<typeof trackingUpdateSchema>;
 export type FlagOrderIssueInput = z.infer<typeof flagOrderIssueSchema>;
 export type PharmacyQueueQuery = z.infer<typeof pharmacyQueueQuerySchema>;
 

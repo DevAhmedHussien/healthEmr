@@ -158,7 +158,7 @@ export function IntakeForm({ tenant, visitType }: { tenant: string; visitType: s
   );
 
   React.useEffect(() => {
-    Promise.all([call(`questionnaire/${visitType}`), call('pharmacies')])
+    Promise.all([call(`intake-forms/${visitType}`), call('pharmacies')])
       .then(([q, p]) => {
         setQuestionnaire(q.questionnaire);
         setCategoryName(q.category.name);
@@ -174,7 +174,7 @@ export function IntakeForm({ tenant, visitType }: { tenant: string; visitType: s
     setKits([]);
     setBasket([]);
     setPicking('');
-    call(`pharmacies/${pharmacyId}/medications`)
+    call(`pharmacies/${pharmacyId}/catalog`)
       // Only what this visit is about. A pharmacy's full list spans every
       // treatment it compounds, and offering a weight-loss patient an
       // anti-nausea tablet is a question a clinician then has to unpick.
@@ -374,7 +374,7 @@ export function IntakeForm({ tenant, visitType }: { tenant: string; visitType: s
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          path: 'visit/createNoPayPhotos',
+          path: 'visits',
           body: {
             masterId: `${tenant}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             company: tenant,
@@ -418,8 +418,8 @@ export function IntakeForm({ tenant, visitType }: { tenant: string; visitType: s
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            path: 'visit/photos',
-            body: { visitId, images: [{ mime: photo.mime, data: photo.data }], kind: 'ID_PHOTO' },
+            path: `visits/${visitId}/uploads`,
+            body: { images: [{ mime: photo.mime, data: photo.data }], kind: 'ID_PHOTO' },
           }),
         });
         photoStored = photoResponse.ok;

@@ -17,6 +17,7 @@ import { AuditInterceptor } from './shared/audit/audit.interceptor';
 import { JwtAuthGuard } from './shared/auth/guards/jwt-auth.guard';
 import { PartnerAuthGuard } from './shared/auth/guards/partner-auth.guard';
 import { TenantGuard } from './shared/auth/guards/tenant.guard';
+import { PermissionsGuard } from '@/shared/auth/guards/permissions.guard';
 import { RolesGuard } from './shared/auth/guards/roles.guard';
 
 import { IdentityModule } from './contexts/identity/identity.module';
@@ -92,6 +93,10 @@ import { HealthModule } from './contexts/health/health.module';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // After the roles guard on purpose: by the time this runs the caller is
+    // already somebody who belongs here, and what is left to decide is whether
+    // they may take this particular irreversible action.
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })
 export class AppModule implements NestModule {

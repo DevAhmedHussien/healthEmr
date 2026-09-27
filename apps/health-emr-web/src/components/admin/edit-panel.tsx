@@ -17,6 +17,7 @@ const MASKED: Record<string, MaskName | undefined> = {
   zip: 'zip',
 };
 import { SimpleSelect } from '@/components/ui/select';
+import { StatesPicker } from '@/components/form/state-chips';
 
 export interface EditField {
   name: string;
@@ -175,10 +176,21 @@ export function EditPanel({
           {fields.map((field) => (
             <div
               key={field.name}
-              className={field.type === 'textarea' ? 'sm:col-span-2' : undefined}
+              className={
+                field.type === 'textarea' || field.type === 'states' ? 'sm:col-span-2' : undefined
+              }
             >
               <Field label={field.label} hint={field.hint}>
-                {field.type === 'textarea' ? (
+                {field.type === 'states' ? (
+                  // Held as the comma-joined string every other field uses, so
+                  // the "only what changed is sent" comparison still works on a
+                  // plain string. `save()` splits it back into an array.
+                  <StatesPicker
+                    ariaLabel={field.label}
+                    value={values[field.name] ? values[field.name].split(',').filter(Boolean) : []}
+                    onChange={(next) => setValues({ ...values, [field.name]: next.join(',') })}
+                  />
+                ) : field.type === 'textarea' ? (
                   <Textarea
                     rows={3}
                     value={values[field.name]}

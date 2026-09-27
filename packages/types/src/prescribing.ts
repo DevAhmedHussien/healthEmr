@@ -276,3 +276,34 @@ export const providerQueueQuerySchema = z
   .strict();
 
 export type ProviderQueueQuery = z.infer<typeof providerQueueQuerySchema>;
+
+// ── the clinician's signature ──────────────────────────────────────────────
+
+/**
+ * A drawn signature.
+ *
+ * A PNG data URI from a signature pad, plus the name typed beside it. Both are
+ * required: the drawing is what a person recognises, and the typed name is what
+ * survives being printed at three centimetres wide on a pharmacy label.
+ *
+ * The size cap is the real validation here. A trimmed signature is a few
+ * kilobytes; anything approaching a megabyte is a photograph, a screenshot of
+ * somebody else's signature, or a mistake — and none of those belong on a
+ * prescription.
+ */
+export const signatureSchema = z
+  .object({
+    image: z
+      .string()
+      .trim()
+      .regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/, 'Draw your signature')
+      .max(400_000, 'That signature is too large — draw it rather than uploading an image'),
+    name: z
+      .string()
+      .trim()
+      .min(2, 'Type your full name as you sign it')
+      .max(200),
+  })
+  .strict();
+
+export type SignatureInput = z.infer<typeof signatureSchema>;

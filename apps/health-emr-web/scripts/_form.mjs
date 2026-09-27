@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-const WEB = 'http://localhost:3000';
+const WEB = 'http://localhost:3005';
 const b = await chromium.launch({ channel: 'chrome' });
 const page = await b.newPage({ viewport: { width: 1400, height: 1100 } });
 const bad = [];

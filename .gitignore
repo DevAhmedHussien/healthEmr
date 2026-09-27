@@ -7,6 +7,10 @@ dist/
 *.tsbuildinfo
 .env
 .env.local
+# Every variant, including the hand-made backups people leave beside them —
+# `.env.bak-4000` held live JWT secrets and matched none of the rules above.
+.env.*
+!.env.example
 .DS_Store
 coverage/
 .storage/

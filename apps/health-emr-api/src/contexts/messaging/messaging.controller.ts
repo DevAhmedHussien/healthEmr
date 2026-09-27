@@ -134,6 +134,24 @@ export class MessagingController {
     return this.messaging.send(user, id, body);
   }
 
+  @Post('ticket')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'A short-lived ticket for the message socket',
+    description:
+      'The access token is held server-side and never reaches browser JavaScript — that is what ' +
+      'makes an XSS bug here a defacement rather than a breach. A socket handshake cannot carry a ' +
+      'cookie across origins, so this mints a separate ticket that is good for one minute and ' +
+      'opens nothing but this person\'s own conversations.\n\n' +
+      'Stolen, it reads their chat for sixty seconds. The access token would read their whole ' +
+      'account until it expired.',
+  })
+  @ApiZodOk(z.object({ ticket: z.string(), expiresInSeconds: z.number() }))
+  @ApiStandardErrors()
+  ticket(@CurrentUser() user: AuthenticatedUser) {
+    return this.messaging.socketTicket(user);
+  }
+
   @Post('threads/:id/attachments')
   @HttpCode(201)
   @ApiParam({ name: 'id', format: 'uuid' })

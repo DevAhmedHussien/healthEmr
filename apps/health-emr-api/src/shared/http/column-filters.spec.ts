@@ -171,6 +171,66 @@ describe('columnFilterWhere', () => {
     expect(columnFilterWhere({ visits: '5' }, map)).toEqual({});
   });
 
+  /**
+   * A cell reading "Elena Marsh" is two fields joined for display. Matching
+   * only the surname meant typing what was on screen found nothing, which is
+   * the first thing anybody tries.
+   */
+  describe('a name spread across two columns', () => {
+    const map = {
+      patient: {
+        path: 'patient.lastName',
+        kind: 'name',
+        paths: ['patient.firstName', 'patient.lastName'],
+      },
+    } as const satisfies ColumnFilterMap;
+
+    const matches = (term: string) =>
+      JSON.stringify(columnFilterWhere({ patient: term }, map));
+
+    it('finds a first name', () => {
+      expect(matches('Elena')).toContain('"firstName":{"contains":"Elena"');
+      expect(matches('Elena')).toContain('"lastName":{"contains":"Elena"');
+    });
+
+    it('finds a surname', () => {
+      expect(matches('Marsh')).toContain('"lastName":{"contains":"Marsh"');
+    });
+
+    it('finds the whole name as it is displayed', () => {
+      const where = columnFilterWhere({ patient: 'Elena Marsh' }, map) as {
+        AND: Array<{ AND: Array<{ OR: unknown[] }> }>;
+      };
+      // Both words have to match something, and either field will do for each —
+      // so "Elena Marsh" and "Marsh Elena" both find her.
+      expect(where.AND[0].AND).toHaveLength(2);
+      expect(where.AND[0].AND[0].OR).toHaveLength(2);
+    });
+
+    it('treats the words the same way round either way', () => {
+      expect(matches('Elena Marsh').length).toBe(matches('Marsh Elena').length);
+    });
+
+    it('ignores punctuation that came along with a pasted cell', () => {
+      // Copying "Marsh, Elena" out of the column and dropping it in the box.
+      expect(matches('Marsh, Elena')).toBe(matches('Marsh Elena'));
+      expect(matches('(AZ)')).toBe(matches('AZ'));
+    });
+
+    it('keeps punctuation inside a word, which is part of the word', () => {
+      expect(matches('AZ-12345')).toContain('AZ-12345');
+      expect(matches("O'Brien")).toContain("O'Brien");
+    });
+
+    it('is not fooled by a term that is only punctuation', () => {
+      expect(columnFilterWhere({ patient: '---' }, map)).toEqual({});
+    });
+
+    it('ignores the spacing somebody actually types', () => {
+      expect(matches('  Elena   Marsh ')).toBe(matches('Elena Marsh'));
+    });
+  });
+
   it('reads a boolean', () => {
     expect(columnFilterWhere({ active: 'true' }, MAP)).toEqual({ AND: [{ isActive: { equals: true } }] });
     expect(columnFilterWhere({ active: 'false' }, MAP)).toEqual({ AND: [{ isActive: { equals: false } }] });

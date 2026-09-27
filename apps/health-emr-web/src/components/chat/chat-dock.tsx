@@ -4,6 +4,7 @@ import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useChatSocket, type IncomingMessage } from '@/lib/chat-socket';
 import { cn } from '@/lib/utils';
 import { Button, Textarea } from '@/components/ui/primitives';
 import {
@@ -52,6 +53,18 @@ const KIND_LABEL: Record<string, string> = {
 const HIDDEN_ON = ['/login', '/apply', '/accept-invite', '/intake', '/welcome'];
 
 /**
+ * And on the Messages page itself.
+ *
+ * Two reasons, one of them a bug this caused: the launcher is fixed to the
+ * bottom right, which is exactly where that page puts its Send button — so it
+ * sat on top of it and swallowed the click. It is also redundant there, since
+ * the whole page is the conversation.
+ */
+function isMessagesPage(pathname: string | null): boolean {
+  return Boolean(pathname && /\/messages(\/|$)/.test(pathname));
+}
+
+/**
  * A conversation that follows you around the application.
  *
  * The full Messages page is the right place to work through a backlog. It is
@@ -86,7 +99,8 @@ export function ChatDock({ messagesHref }: { messagesHref: string }) {
   const fileInput = React.useRef<HTMLInputElement>(null);
   const foot = React.useRef<HTMLDivElement>(null);
 
-  const hidden = HIDDEN_ON.some((prefix) => pathname?.startsWith(prefix));
+  const hidden =
+    HIDDEN_ON.some((prefix) => pathname?.startsWith(prefix)) || isMessagesPage(pathname);
 
   const loadThreads = React.useCallback(async () => {
     try {
@@ -143,6 +157,48 @@ export function ChatDock({ messagesHref }: { messagesHref: string }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, active]);
+
+  /**
+   * The same live delivery as the full Messages page.
+   *
+   * It matters more here: the dock is open *while* somebody works on something
+   * else, which is exactly when they are not going to reload the page to find
+   * out whether a patient replied.
+   */
+  const { watch } = useChatSocket(
+    React.useCallback(
+      (incoming: IncomingMessage) => {
+        if (incoming.threadId === active) {
+          setMessages((current) =>
+            current.some((message) => message.id === incoming.messageId)
+              ? current
+              : [
+                  ...current,
+                  {
+                    id: incoming.messageId,
+                    author: incoming.author,
+                    authorRole: incoming.authorRole,
+                    content: incoming.content,
+                    sentAt: incoming.sentAt,
+                    mine: false,
+                    attachments: [],
+                  },
+                ],
+          );
+          return;
+        }
+
+        // Another conversation: the badge has to move even when the dock is
+        // shut, which is most of the time.
+        void loadThreads();
+      },
+      [active, loadThreads],
+    ),
+  );
+
+  React.useEffect(() => {
+    if (active) watch(active);
+  }, [active, watch]);
 
   const unread = threads.filter((thread) => thread.unread).length;
   const openThread = threads.find((thread) => thread.id === active) ?? null;

@@ -197,7 +197,7 @@
       server&rsquo;s OpenAPI document, so nothing here can drift from what the code actually does.
     </p>
     <div class="facts">
-      <div class="fact"><b>130</b><span>Endpoints</span></div>
+      <div class="fact"><b>175</b><span>Endpoints</span></div>
       <div class="fact"><b>10</b><span>Audiences</span></div>
       <div class="fact"><b>v1.0</b><span>Version</span></div>
     </div>
@@ -206,7 +206,7 @@
   <div class="layout">
     <nav class="toc">
       <ol>
-        <li><a href="#partner">Partner API<span class="count">4</span></a></li><li><a href="#auth">Authentication<span class="count">6</span></a></li><li><a href="#public">Public<span class="count">7</span></a></li><li><a href="#super-admin">Platform owner<span class="count">69</span></a></li><li><a href="#admin">Client business<span class="count">9</span></a></li><li><a href="#clinic">Provider<span class="count">7</span></a></li><li><a href="#dispensary">Pharmacy<span class="count">16</span></a></li><li><a href="#portal">Patient<span class="count">3</span></a></li><li><a href="#shared">Shared<span class="count">7</span></a></li><li><a href="#ops">Operations<span class="count">2</span></a></li>
+        <li><a href="#partner">Partner API<span class="count">13</span></a></li><li><a href="#auth">Authentication<span class="count">6</span></a></li><li><a href="#public">Public<span class="count">7</span></a></li><li><a href="#super-admin">Platform owner<span class="count">94</span></a></li><li><a href="#admin">Client business<span class="count">10</span></a></li><li><a href="#clinic">Provider<span class="count">13</span></a></li><li><a href="#dispensary">Pharmacy<span class="count">17</span></a></li><li><a href="#portal">Patient<span class="count">3</span></a></li><li><a href="#shared">Shared<span class="count">10</span></a></li><li><a href="#ops">Operations<span class="count">2</span></a></li>
       </ol>
     </nav>
 
@@ -222,36 +222,79 @@
 
       <section class="group" id="partner">
             <h2>Partner API</h2>
-            <p class="meta"><span><b>Called by</b> A client business’s server</span><span><b>Auth</b> Tenant API key (Bearer)</span><span><b>4</b> endpoints</span></p>
+            <p class="meta"><span><b>Called by</b> A client business’s server</span><span><b>Auth</b> Tenant API key (Bearer)</span><span><b>13</b> endpoints</span></p>
             <p class="group-blurb">What a telehealth business integrates against. Shaped to match the incumbent’s contract, so a client already integrated elsewhere can repoint by changing a base URL and a token.</p>
-            <details class="op" data-search="get /partner/v1/pharmacies pharmacies this client may name">
+            <details class="op" data-search="get /partner/v1/coverage where you can prescribe, and on what terms">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/partner/v1/coverage</code>
+      <span class="summary">Where you can prescribe, and on what terms</span>
+    </summary>
+    <div class="body"><p class="desc">Call this before taking money. The alternative is what clients were doing: collecting a state at checkout, charging the patient, posting the visit, and finding out from <code>State not valid</code> that the state does not permit asynchronous prescribing at all — by which point the patient has paid and answered forty questions.
+
+<code>servable</code> is the one to branch on. <code>allowsAsync</code> decides whether a store-and-forward intake can be filled at all; <code>requiresSynchronousInitial</code> does not block a visit, but a client that wants to warn somebody their first consultation will be a live call needs it.</p><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
+  </details><details class="op" data-search="get /partner/v1/intake-forms/{visittype} the questions this visit type asks">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/partner/v1/intake-forms/{visitType}</code>
+      <span class="summary">The questions this visit type asks</span>
+    </summary>
+    <div class="body"><p class="desc">A client building its own intake form renders these; one posting the payload by hand can ignore them and send <code>Q1</code>/<code>A1</code> pairs of its own. Either way the clinician sees the same thing.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>visitType</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
+  </details><details class="op" data-search="get /partner/v1/patients/by-phone/{phone} look up a patient by phone number">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/partner/v1/patients/by-phone/{phone}</code>
+      <span class="summary">Look up a patient by phone number</span>
+    </summary>
+    <div class="body"><p class="desc">Scoped to your account. The same person may exist under another client on the same number and you will not see their record of them.
+
+Every call is written to the audit log as a read of that patient.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>phone</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Ten digits, no punctuation.</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> The patient, or `{ status: 400, error }` if unknown.</span></div></div>
+  </details><details class="op" data-search="get /partner/v1/pharmacies pharmacies you may name">
     <summary>
       <span class="verb get">GET</span>
       <code class="path">/partner/v1/pharmacies</code>
-      <span class="summary">Pharmacies this client may name</span>
+      <span class="summary">Pharmacies you may name</span>
     </summary>
-    <div class="body"><p class="desc">Every pharmacy on this client’s roster, with what each is able to dispense. The <code>pharmacyId</code> returned here is what goes on an intake.</p></div>
-  </details><details class="op" data-search="get /partner/v1/pharmacies/{pharmacyid}/medications what one pharmacy carries">
+    <div class="body"><p class="desc">Every pharmacy on your roster, with what each can dispense. The <code>pharmacyId</code> returned here is what goes on a visit.</p><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
+  </details><details class="op" data-search="get /partner/v1/pharmacies/{pharmacyid}/catalog what one pharmacy carries">
     <summary>
       <span class="verb get">GET</span>
-      <code class="path">/partner/v1/pharmacies/{pharmacyId}/medications</code>
+      <code class="path">/partner/v1/pharmacies/{pharmacyId}/catalog</code>
       <span class="summary">What one pharmacy carries</span>
     </summary>
-    <div class="body"><p class="desc">The list an order form should be built from. Each entry’s <code>kitId</code> is what goes in <code>patientPreference[].medId</code>. An intake naming a kit the pharmacy does not carry is refused, so offering anything outside this list produces a rejected visit.</p></div>
-  </details><details class="op" data-search="get /partner/v1/visit/{masterid} one visit">
-    <summary>
-      <span class="verb get">GET</span>
-      <code class="path">/partner/v1/visit/{masterId}</code>
-      <span class="summary">One visit</span>
-    </summary>
-    <div class="body"><p class="desc">Status, the decision on each requested line, and the shipment once it exists. Scoped to the calling client, so another client’s visit is not found rather than forbidden.</p></div>
-  </details><details class="op" data-search="post /partner/v1/visit/createnopayphotos submit an intake and create a visit">
+    <div class="body"><p class="desc">The list your order form should be built from. A visit naming a <code>medId</code> the pharmacy does not stock is refused, so offering a patient anything outside this list produces a rejected visit.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>pharmacyId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
+  </details><details class="op" data-search="post /partner/v1/visits submit a visit">
     <summary>
       <span class="verb post">POST</span>
-      <code class="path">/partner/v1/visit/createNoPayPhotos</code>
-      <span class="summary">Submit an intake and create a visit</span>
+      <code class="path">/partner/v1/visits</code>
+      <span class="summary">Submit a visit</span>
     </summary>
-    <div class="body"><p class="desc">The main integration point. Creates the patient if they are new, records the questionnaire, routes the visit to a clinician licensed in the patient’s state, and returns a visit id. Idempotent on <code>masterId</code> per tenant: a retried call is refused rather than creating a second visit.</p><pre><code>{
+    <div class="body"><p class="desc">The one endpoint a client business calls. A patient finishes your intake form and you post it here; everything after this happens on our side and is reported back to the patient.
+
+**What the payload names.** <code>company</code> is your account slug, <code>visitType</code> the treatment area (this is the category), <code>pharmacyId</code> the pharmacy slug you are contracted to, and <code>masterId</code> your own order id — which is also the idempotency key, so a retry is safe and a reused one is refused.
+
+**<code>formObj.patientPreference[]</code>** is what the patient chose: <code>medId</code> is the platform medication id (from <code>GET /partner/v1/pharmacies/{pharmacyId}/catalog</code> — not the pharmacy's kit code), plus strength, quantity, refills and days supply. Send <code>patientPaidCents</code> per line to see your own margin in the console.
+
+**<code>Q1</code>/<code>A1</code> … <code>Qn</code>/<code>An</code>** carry the questionnaire. They are encrypted at rest and only a clinician and you can read them back.
+
+**What happens next.** The visit is checked against your entitlements, the state the patient was in, and whether that pharmacy stocks what was chosen — all refusals arrive now, as a 400 you can act on, rather than as a patient waiting. It then routes to a licensed clinician, who approves or refuses. An approval is signed, sent to the pharmacy and shipped. The patient is told at each of those four steps in their own messages.
+
+Photographs are posted separately to <code>POST /partner/v1/visits/{visitId}/uploads</code>.</p><pre><code>{
   "masterId": "your-unique-id",
   "company": "yourSlug",
   "visitType": "weightloss",
@@ -269,7 +312,122 @@
         "quantity": "1", "refills": "0" }
     ]
   }
-}</code></pre><table class="params"><thead><tr><th>Refused with</th><th></th></tr></thead><tbody><tr><td><code>No company found</code></td><td class="muted">The <code>company</code> does not match the tenant the API key belongs to.</td></tr><tr><td><code>Company does not have that visit type</code></td><td class="muted">That category is not enabled for this client.</td></tr><tr><td><code>Pharmacy mismatch in patientPreference</code></td><td class="muted">The named pharmacy is not on this client’s roster, or cannot dispense this product.</td></tr><tr><td><code><em>Pharmacy</em> does not stock <em>kit</em></code></td><td class="muted">The pharmacy does not carry that kit. Call the medications lookup below for what it does.</td></tr><tr><td><code>Branded med with compounding pharmacy</code></td><td class="muted">A branded product was sent to a compounding-only pharmacy.</td></tr><tr><td><code>State not valid</code></td><td class="muted">No contracted clinician is licensed in that state, or the client may not sell there.</td></tr><tr><td><code>Duplicate masterId</code></td><td class="muted">That <code>masterId</code> already exists for this client.</td></tr></tbody></table></div>
+}</code></pre><table class="params"><thead><tr><th>Refused with</th><th></th></tr></thead><tbody><tr><td><code>No company found</code></td><td class="muted">The <code>company</code> does not match the tenant the API key belongs to.</td></tr><tr><td><code>Company does not have that visit type</code></td><td class="muted">That category is not enabled for this client.</td></tr><tr><td><code>Pharmacy mismatch in patientPreference</code></td><td class="muted">The named pharmacy is not on this client’s roster, or cannot dispense this product.</td></tr><tr><td><code><em>Pharmacy</em> does not stock <em>kit</em></code></td><td class="muted">The pharmacy does not carry that kit. Call the medications lookup below for what it does.</td></tr><tr><td><code>Branded med with compounding pharmacy</code></td><td class="muted">A branded product was sent to a compounding-only pharmacy.</td></tr><tr><td><code>State not valid</code></td><td class="muted">No contracted clinician is licensed in that state, or the client may not sell there.</td></tr><tr><td><code>Duplicate masterId</code></td><td class="muted">That <code>masterId</code> already exists for this client.</td></tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> The visit was created and is on its way to a clinician</span><span class="status warn"><b>400</b> Refused, with a reason in `error`: an unknown medId, a visit type or pharmacy your account is not entitled to, a pharmacy that does not stock what was chosen, a state you may not serve, or a masterId already used.</span></div></div>
+  </details><details class="op" data-search="get /partner/v1/visits/{masterid} look up a visit by your order id">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/partner/v1/visits/{masterId}</code>
+      <span class="summary">Look up a visit by your order id</span>
+    </summary>
+    <div class="body"><p class="desc">The whole visit: its status, the intake the patient filled in, any lab results, and every prescription written on it in order.
+
+<code>visitStatus</code> is deliberately coarser than our internal one — a visit waiting to be assigned and one sitting in a clinician’s queue are both <code>pending</code> from outside.
+
+Every call is written to the audit log as a read of that patient.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>masterId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Your own order id, as sent on the visit.</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> The visit, or `{ status: 400, error }` if unknown.</span></div></div>
+  </details><details class="op" data-search="patch /partner/v1/visits/{masterid} correct a visit">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/partner/v1/visits/{masterId}</code>
+      <span class="summary">Correct a visit</span>
+    </summary>
+    <div class="body"><p class="desc">Fixes the contact and delivery details on a visit you already sent — a mistyped phone number, a wrong street. Send only the fields that change.
+
+**Only until a clinician decides.** After that the address on the chart is the one they decided against and the order is with a pharmacy, so this returns 400. Correct it with the pharmacy, or ask us to withdraw the visit and send a new one.
+
+**The questionnaire cannot be changed at all.** It is what the patient attested to, and answers that can be edited afterwards are not evidence of anything. Nor can the state: it decides which clinician may treat them, and that is already settled.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>masterId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Your own order id, as sent on the visit.</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> The visit was corrected</span><span class="status warn"><b>400</b> No visit with that masterId on your account, or a clinician has already decided it.</span></div></div>
+  </details><details class="op" data-search="post /partner/v1/visits/{masterid}/cancel cancel a visit">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/partner/v1/visits/{masterId}/cancel</code>
+      <span class="summary">Cancel a visit</span>
+    </summary>
+    <div class="body"><p class="desc">For the two cases worth cancelling: a clinician refused the prescription, or the pharmacy rejected the order. Either way the patient is waiting on something that will never arrive.
+
+Any prescription still live is voided and any order a pharmacy could still pick up is withdrawn. A visit whose medication has already shipped is refused with <code>ALREADY_SHIPPED</code> — the parcel is real and the record has to agree with it.
+
+The reason is written to the audit log, so it is required.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>masterId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Processed. Read `status` for the outcome.</span><span class="status warn"><b>400</b> A field was missing, empty, or the wrong type.</span></div></div>
+  </details><details class="op" data-search="post /partner/v1/visits/{masterid}/messages a patient wrote to the clinician">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/partner/v1/visits/{masterId}/messages</code>
+      <span class="summary">A patient wrote to the clinician</span>
+    </summary>
+    <div class="body"><p class="desc">The other half of the DOCTOR_CHAT webhook. Your patient never sees this platform — they are on your site — so when a clinician asks them for a clearer photograph, the reply is typed somewhere we cannot reach. Post it here and it lands in the same conversation, with the clinician seeing it immediately.
+
+Send <code>content</code>, an <code>image</code>, or both. An image may be a <code>url</code> we fetch or base64 <code>content</code>; either is accepted, so use whichever your system already has.
+
+The message is recorded as the patient’s, not as yours — a clinical transcript that attributed a patient’s words to a company would mislead whoever reads it back.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>masterId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Your own order id for the visit</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
+  </details><details class="op" data-search="post /partner/v1/visits/{masterid}/outcome update a visit, or re-send its prescription">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/partner/v1/visits/{masterId}/outcome</code>
+      <span class="summary">Update a visit, or re-send its prescription</span>
+    </summary>
+    <div class="body"><p class="desc">One call for two situations, because from your side it is one question — here is the corrected order — and which one it becomes depends on something you cannot see: whether a clinician has reached the visit yet.
+
+**Before a decision** the requested medications and pharmacy are replaced and you get <code>VISIT_DATA_UPDATED</code>. The lines you send replace the ones on the visit rather than merging with them, so send the whole order, not a patch.
+
+**After an approval** the clinician’s decision is re-issued against the corrected order and you get <code>NEW_RX_SENT</code>. No clinician is asked again, which is only safe because of the four guards below — the resend has to be materially the prescription that was approved:
+
+- same dosage category as the original — otherwise <code>CATEGORY_MISMATCH</code>
+- a pharmacy that stocks it — otherwise <code>PHARMACY_MISMATCH</code>
+- within 7 days of signing — otherwise <code>TOO_LONG_AGO</code>
+- within your account’s retry limit — otherwise <code>TOO_MANY_RETRIES</code>
+
+**After a refusal** there is no prescription to re-send, so a correction is treated as an amendment and returns <code>VISIT_DATA_UPDATED</code>. **After a referral** nothing is accepted: the clinician sent the patient elsewhere, and that answer was not about the medication.
+
+**No field may be null, undefined or empty.** Each is refused by name before anything is processed. <code>apiKey</code> must match the bearer token on the request.
+
+Every outcome is HTTP 200 with a <code>status</code> in the body.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>masterId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Processed. Read `status` for the outcome.</span><span class="status warn"><b>400</b> A field was missing, empty, or the wrong type.</span></div></div>
+  </details><details class="op" data-search="get /partner/v1/visits/{visitid}/uploads the photographs on a visit">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/partner/v1/visits/{visitId}/uploads</code>
+      <span class="summary">The photographs on a visit</span>
+    </summary>
+    <div class="body"><p class="desc">Metadata by default; pass <code>?include=data</code> for the bytes. Kept off the visit lookup by default because a client polling status every minute should not be made to download several megabytes of identification each time.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>visitId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
+  </details><details class="op" data-search="post /partner/v1/visits/{visitid}/uploads attach photographs to a visit">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/partner/v1/visits/{visitId}/uploads</code>
+      <span class="summary">Attach photographs to a visit</span>
+    </summary>
+    <div class="body"><p class="desc">Posted after the visit, against the id it returned — a government ID, and sometimes a prescription label. Kept off the visit payload because several megabytes of base64 inside the call that creates a patient makes a retry expensive and a timeout likely.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>visitId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Our id for the visit, returned when you submitted it.</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> </span></div></div>
   </details>
           </section><section class="group" id="auth">
             <h2>Authentication</h2>
@@ -384,7 +542,7 @@
   </details>
           </section><section class="group" id="super-admin">
             <h2>Platform owner</h2>
-            <p class="meta"><span><b>Called by</b> SUPER_ADMIN</span><span><b>Auth</b> Session (Bearer)</span><span><b>69</b> endpoints</span></p>
+            <p class="meta"><span><b>Called by</b> SUPER_ADMIN</span><span><b>Auth</b> Session (Bearer)</span><span><b>94</b> endpoints</span></p>
             <p class="group-blurb">The console: client accounts, applications, the provider and pharmacy directories, patients, prescriptions, billing, reports, the activity trail, and everything that changes state.</p>
             <details class="op" data-search="post /v1/super-admin/{kind}/{id}/status suspend or reactivate">
     <summary>
@@ -434,6 +592,13 @@
       <span class="summary">Verify the audit chain</span>
     </summary>
     <div class="body"><p class="desc">Recomputes every entry hash against the one before it. A false result means a row was altered or removed in the database directly, and is an incident rather than a warning.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/activity/providers hours worked, across the clinician roster">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/activity/providers</code>
+      <span class="summary">Hours worked, across the clinician roster</span>
+    </summary>
+    <div class="body"><p class="desc">Active time per clinician over the window, busiest first. Derived from recorded actions rather than from a session timer, so an idle browser counts for nothing.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="get /v1/super-admin/admins admin accounts">
     <summary>
       <span class="verb get">GET</span>
@@ -483,6 +648,51 @@
     </summary>
     <div class="body"><p class="desc">Closes the account, deactivates its people and revokes its API keys. Nothing clinical or financial is deleted — those records are retained and the account can be restored.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
         <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/admins/{id}/api-access how a client business authenticates to us">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/admins/{id}/api-access</code>
+      <span class="summary">How a client business authenticates to us</span>
+    </summary>
+    <div class="body"><p class="desc">Their company key, the base URL to post to, and every key ever issued to them — active, expired and withdrawn. Never the keys themselves; those exist only in the response that created them.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/admins/{id}/api-keys issue an api key">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/admins/{id}/api-keys</code>
+      <span class="summary">Issue an API key</span>
+    </summary>
+    <div class="body"><p class="desc">Mints the bearer token this client sends on every request. It is returned once, in this response, and is unrecoverable afterwards — only its hash is stored.
+
+A key resolves to exactly one account, and intake refuses any visit whose <code>company</code> field disagrees with the key that carried it. That pairing is what makes a submission attributable.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> The key was issued</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/admins/{id}/api-keys/{keyid} delete an api key">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/admins/{id}/api-keys/{keyId}</code>
+      <span class="summary">Delete an API key</span>
+    </summary>
+    <div class="body"><p class="desc">The key is removed from the account and from the database, and stops working immediately. Anything still sending it gets 401 on its next request.
+
+The audit trail keeps a record that a key with this prefix existed and who deleted it — that table is append-only and separate, so removing the credential does not remove the history of it.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>keyId</code><span class="req">required</span></td>
         <td>path</td>
         <td class="muted">string</td>
         <td class="muted"></td>
@@ -542,6 +752,32 @@
       <span class="summary">Remove a pharmacy or provider from a client’s roster</span>
     </summary>
     <div class="body"><p class="desc">A clinician’s link is ended rather than deleted, so prescriptions they signed for this client stay explicable years later.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/admins/{id}/webhooks where this client is told what happened">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/admins/{id}/webhooks</code>
+      <span class="summary">Where this client is told what happened</span>
+    </summary>
+    <div class="body"><p class="desc">Every endpoint registered for this account, what each subscribes to, and whether it is working. Never the bearer token: it belongs to the client and we hold it only to present it back to their endpoint.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/admins/{id}/webhooks register an endpoint">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/admins/{id}/webhooks</code>
+      <span class="summary">Register an endpoint</span>
+    </summary>
+    <div class="body"><p class="desc">Points a client's own system at the events they choose — so their CRM can show a patient and a salesperson where a visit has got to without polling us.
+
+Returns a signing secret once, and never again. Each request carries their bearer token, so their endpoint knows it is us, and a signature over the body, so they can prove it was not altered.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
         <td><code>id</code><span class="req">required</span></td>
         <td>path</td>
         <td class="muted">string</td>
@@ -803,6 +1039,20 @@
         <td class="muted">string</td>
         <td class="muted"></td>
       </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/orders/{orderid}/payload what we sent the pharmacy, and what came back">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/orders/{orderId}/payload</code>
+      <span class="summary">What we sent the pharmacy, and what came back</span>
+    </summary>
+    <div class="body"><p class="desc">The exact request body posted to the pharmacy at transmission, the endpoint it went to, and their answer — the order id they gave it, or the error. Kept because a pharmacy disputing what it received is otherwise our word against theirs.
+
+This is full PHI. Reading it is recorded as break-the-glass.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>orderId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="post /v1/super-admin/orders/{orderid}/reroute send a stuck order to a different pharmacy">
     <summary>
       <span class="verb post">POST</span>
@@ -870,6 +1120,54 @@
       <span class="summary">One complete patient record</span>
     </summary>
     <div class="body"><p class="desc">Demographics, allergies, conditions, medications, vitals, labs, visits, prescriptions and shipments. Nothing is withheld from this role — and every read is recorded as break-the-glass.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/patients/{id}/name correct a patient's name">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/patients/{id}/name</code>
+      <span class="summary">Correct a patient's name</span>
+    </summary>
+    <div class="body"><p class="desc">Names arrive typed into a client business’s checkout form, so they are wrong often enough to matter — a nickname where the ID says otherwise, two surnames collapsed into one. A pharmacy label that disagrees with the ID presented at collection is a parcel that does not get handed over.
+
+The correction goes out to every client business holding this patient, once per visit, because masterId is the only key they can join on. The reason is recorded against the chart.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/permanent-delete/{kind}/{id} whether this can be erased, and what stops it">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/permanent-delete/{kind}/{id}</code>
+      <span class="summary">Whether this can be erased, and what stops it</span>
+    </summary>
+    <div class="body"><p class="desc">Asked before the button is offered, so an administrator reads "31 visits refer to this" rather than discovering it by pressing delete. Nothing is changed.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>kind</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/permanent-delete/{kind}/{id} erase a record permanently">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/permanent-delete/{kind}/{id}</code>
+      <span class="summary">Erase a record permanently</span>
+    </summary>
+    <div class="body"><p class="desc">For the account created by mistake or the duplicate — not for one that has been used. Refused while any visit, prescription, order, patient, invoice or staff account refers to it, because health records are retained for years and this would either cascade into them or strand them. Archiving is the answer in every other case.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>kind</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
         <td><code>id</code><span class="req">required</span></td>
         <td>path</td>
         <td class="muted">string</td>
@@ -1235,6 +1533,76 @@
         <td class="muted">string</td>
         <td class="muted"></td>
       </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/providers/{id}/activity one clinician’s hours, day by day">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/providers/{id}/activity</code>
+      <span class="summary">One clinician’s hours, day by day</span>
+    </summary>
+    <div class="body"><p class="desc">A day-by-day series for charting, plus totals. Days with no activity are present and zero, so the shape of the week is not flattened by omitting them.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/providers/{id}/licences the states this clinician is licensed in">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/providers/{id}/licences</code>
+      <span class="summary">The states this clinician is licensed in</span>
+    </summary>
+    <div class="body"><p class="desc">Soonest to expire first, so the ones needing attention are at the top.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/providers/{id}/licences add a state licence">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/providers/{id}/licences</code>
+      <span class="summary">Add a state licence</span>
+    </summary>
+    <div class="body"><p class="desc">Added by the platform, so it is ACTIVE immediately and the clinician can be routed visits in that state. A licence the clinician adds for themselves arrives PENDING instead.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/super-admin/providers/{id}/licences/{licenceid} update a state licence">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/super-admin/providers/{id}/licences/{licenceId}</code>
+      <span class="summary">Update a state licence</span>
+    </summary>
+    <div class="body"><p class="desc">Including its standing. Setting ACTIVE is what turns a licence the clinician added themselves into one that can be routed against.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>licenceId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/providers/{id}/licences/{licenceid} remove a state licence">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/providers/{id}/licences/{licenceId}</code>
+      <span class="summary">Remove a state licence</span>
+    </summary>
+    <div class="body"><p class="desc">For one entered in error. A licence that has lapsed should be marked EXPIRED rather than deleted, so the record still shows they once held it.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>licenceId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="post /v1/super-admin/providers/{id}/restore restore an archived provider">
     <summary>
       <span class="verb post">POST</span>
@@ -1292,6 +1660,90 @@
       <span class="summary">Products priced in a way that loses money</span>
     </summary>
     <div class="body"><p class="desc">Unpriced, priced below cost, or priced with no cost recorded behind it. All three are silent in a total — an unpriced product just makes the margin look worse, and a below-cost one makes volume look like success. Reported rather than blocked: selling under cost is sometimes deliberate, and a rule that refuses it would only be worked around.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/visits every visit, across every client">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/visits</code>
+      <span class="summary">Every visit, across every client</span>
+    </summary>
+    <div class="body"><p class="desc">The whole platform in one list: who the patient is, which client sent them, what was asked for and how far it got. Carries the same derived <code>stage</code> and the same filter predicate the client sees on its own list, so the two can never disagree.
+
+Withdrawn visits appear here, marked, and nowhere else.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>limit</code></td>
+        <td>query</td>
+        <td class="muted">integer</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>cursor</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted">Opaque. Pass back what the previous page returned; never construct one.</td>
+      </tr><tr>
+        <td><code>order</code></td>
+        <td>query</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/super-admin/visits/{id} correct a visit">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/super-admin/visits/{id}</code>
+      <span class="summary">Correct a visit</span>
+    </summary>
+    <div class="body"><p class="desc">Contact details, delivery address, the pharmacy it should be filled by, and the status — at any stage, including after a clinician has decided and after it has shipped.
+
+Wider on purpose than the client’s own update, which stops at the decision. The cases this exists for are the ones that arrive by telephone afterwards: a patient who moved, an order pointed at the wrong pharmacy, a status that has to catch up with something that happened outside the system.
+
+**The questionnaire cannot be changed by anyone.** It is what the patient attested to, and an answer that can be rewritten afterwards is not evidence of anything.
+
+The reason is required and both the old and new values go to the audit log.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/visits/{id} withdraw a visit">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/visits/{id}</code>
+      <span class="summary">Withdraw a visit</span>
+    </summary>
+    <div class="body"><p class="desc">For when a client business asks for a visit to be removed — a test submission, a duplicate, an order the patient disputed. It disappears from every list and every tile, and stops counting toward revenue, cost and profit for them and for us. Any provider fee on it is voided and any order still queued is cancelled.
+
+**The row is kept.** A clinician may have read the chart; erasing it would leave that unexplained, and the audit trail is hash-chained so history cannot be quietly rewritten. What is recorded is who withdrew it, when, and why.
+
+**A shipped visit is refused by default.** The medication reached a real patient at a real address. Raise a credit against the invoice instead — or send <code>force: true</code> with a reason if it genuinely has to go, in which case the audit entry records that it had shipped.
+
+Only a SUPER_ADMIN may call this. The party whose numbers change is deliberately not the party who changes them.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/visits/{id}/assign hand a waiting visit to a clinician">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/visits/{id}/assign</code>
+      <span class="summary">Hand a waiting visit to a clinician</span>
+    </summary>
+    <div class="body"><p class="desc">For a visit nobody can take — no one is licensed in the patient’s state for that treatment, so retrying will never place it. Capacity is overridden; licence and credentialling are not, at any level of privilege. Recorded against the visit and in the audit log.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/visits/{id}/candidates who could take this visit">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/visits/{id}/candidates</code>
+      <span class="summary">Who could take this visit</span>
+    </summary>
+    <div class="body"><p class="desc">Every active clinician, with the reason each one was passed over. Licence and credentialling are hard refusals; being at capacity is shown but does not disqualify, because overriding that is what this screen is for.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="get /v1/super-admin/visits/{id}/questionnaire the questionnaire behind a visit">
     <summary>
       <span class="verb get">GET</span>
@@ -1304,12 +1756,79 @@
         <td class="muted">string</td>
         <td class="muted">Visit (prescription request) id</td>
       </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/visits/{id}/restore put a withdrawn visit back">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/visits/{id}/restore</code>
+      <span class="summary">Put a withdrawn visit back</span>
+    </summary>
+    <div class="body"><p class="desc">For a withdrawal made in error. The visit counts again from here on. A voided provider fee and a cancelled pharmacy order are not reinstated — whether to pay the clinician again, and whether the pharmacy should fill after all, are decisions a person makes.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="patch /v1/super-admin/webhooks/{webhookid} change an endpoint">
+    <summary>
+      <span class="verb patch">PATCH</span>
+      <code class="path">/v1/super-admin/webhooks/{webhookId}</code>
+      <span class="summary">Change an endpoint</span>
+    </summary>
+    <div class="body"><p class="desc">Repoint it, change what it subscribes to, switch it on or off, or replace the bearer token. Omitting the token leaves the stored one alone. An endpoint the platform switched off starts being tried again.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>webhookId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="delete /v1/super-admin/webhooks/{webhookid} remove an endpoint">
+    <summary>
+      <span class="verb delete">DELETE</span>
+      <code class="path">/v1/super-admin/webhooks/{webhookId}</code>
+      <span class="summary">Remove an endpoint</span>
+    </summary>
+    <div class="body"><p class="desc">Stops sending to it and removes the record of what was sent.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>webhookId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/super-admin/webhooks/{webhookid}/deliveries what we sent this endpoint">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/super-admin/webhooks/{webhookId}/deliveries</code>
+      <span class="summary">What we sent this endpoint</span>
+    </summary>
+    <div class="body"><p class="desc">Each attempt with the body that went, their answer, and when the next try is due. This is the answer to "your events never reached us".</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>webhookId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/super-admin/webhooks/{webhookid}/test send a test event">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/super-admin/webhooks/{webhookId}/test</code>
+      <span class="summary">Send a test event</span>
+    </summary>
+    <div class="body"><p class="desc">Posts a <code>CONSULT_RECEIVED</code> carrying a placeholder masterId and reports what came back. It names no patient: the point is to prove the URL, the credential and the signature work, and doing that with real details would disclose them to whatever the URL turns out to be.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>webhookId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details>
           </section><section class="group" id="admin">
             <h2>Client business</h2>
-            <p class="meta"><span><b>Called by</b> ADMIN</span><span><b>Auth</b> Session (Bearer)</span><span><b>9</b> endpoints</span></p>
+            <p class="meta"><span><b>Called by</b> ADMIN</span><span><b>Auth</b> Session (Bearer)</span><span><b>10</b> endpoints</span></p>
             <p class="group-blurb">A telehealth business looking at its own patients and orders. Scoped to that tenant in the data layer, so a missing filter cannot leak another client’s records.</p>
-            <details class="op" data-search="get /v1/admin/overview how many visits sit at each stage">
+            <details class="op" data-search="get /v1/admin/api-access how i authenticate to the api">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/admin/api-access</code>
+      <span class="summary">How I authenticate to the API</span>
+    </summary>
+    <div class="body"><p class="desc">My company key, the base URL to post visits to, and the keys issued to my account. The keys themselves are not stored and cannot be shown again — ask the platform owner for a new one if you have lost it, or to remove one you no longer use.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/admin/overview how many visits sit at each stage">
     <summary>
       <span class="verb get">GET</span>
       <code class="path">/v1/admin/overview</code>
@@ -1395,15 +1914,50 @@
   </details>
           </section><section class="group" id="clinic">
             <h2>Provider</h2>
-            <p class="meta"><span><b>Called by</b> PROVIDER</span><span><b>Auth</b> Session (Bearer)</span><span><b>7</b> endpoints</span></p>
+            <p class="meta"><span><b>Called by</b> PROVIDER</span><span><b>Auth</b> Session (Bearer)</span><span><b>13</b> endpoints</span></p>
             <p class="group-blurb">A clinician’s review queue, and the decision that turns a visit into a prescription.</p>
-            <details class="op" data-search="get /v1/clinic/me/earnings the ledger behind my balance">
+            <details class="op" data-search="get /v1/clinic/me/activity my hours, day by day">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/clinic/me/activity</code>
+      <span class="summary">My hours, day by day</span>
+    </summary>
+    <div class="body"><p class="desc">How long I was actually working each day, worked out from the actions I took rather than from how long a tab was open. A gap longer than the idle window ends a session.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/clinic/me/earnings the ledger behind my balance">
     <summary>
       <span class="verb get">GET</span>
       <code class="path">/v1/clinic/me/earnings</code>
       <span class="summary">The ledger behind my balance</span>
     </summary>
     <div class="body"><p class="desc">One line per completed review: what it was, which client sent it, what it paid, and whether it has been paid out yet.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/clinic/me/licences the states i am licensed in">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/clinic/me/licences</code>
+      <span class="summary">The states I am licensed in</span>
+    </summary>
+    <div class="body"><p class="desc">What the platform holds for me, including any I have added that are still waiting to be checked. Only ACTIVE licences are used to route visits.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/clinic/me/licences add a state i am licensed in">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/clinic/me/licences</code>
+      <span class="summary">Add a state I am licensed in</span>
+    </summary>
+    <div class="body"><p class="desc">Recorded as PENDING and checked by the platform before it counts. Visits are routed only on an ACTIVE licence, so adding one here does not by itself let me review patients in that state — which is deliberate, since nobody has verified it yet.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/clinic/me/signature my signature">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/clinic/me/signature</code>
+      <span class="summary">My signature</span>
+    </summary>
+    <div class="body"><p class="desc">What is on file, and when it was drawn. Held encrypted and returned only to the clinician it belongs to.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="put /v1/clinic/me/signature draw or replace my signature">
+    <summary>
+      <span class="verb put">PUT</span>
+      <code class="path">/v1/clinic/me/signature</code>
+      <span class="summary">Draw or replace my signature</span>
+    </summary>
+    <div class="body"><p class="desc">Drawn once and applied at each signing, rather than redrawn sixty times in an afternoon — what makes each signing deliberate is the confirmation at the point of signing. Replacing it changes nothing already signed: every prescription keeps its own copy from the moment it was signed.</p><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="get /v1/clinic/me/summary my workload and balance">
     <summary>
       <span class="verb get">GET</span>
@@ -1474,6 +2028,20 @@
         <td class="muted">string</td>
         <td class="muted"></td>
       </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/clinic/visits/{id}/request-information ask the patient something before deciding">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/clinic/visits/{id}/request-information</code>
+      <span class="summary">Ask the patient something before deciding</span>
+    </summary>
+    <div class="body"><p class="desc">Puts the visit on hold and posts the question into the conversation this patient already has with this clinician — where the patient can answer in words or attach a photograph, and where the answer becomes part of the chart.
+
+The patient is nudged through whatever they have consented to, and that nudge carries no clinical detail: a text arrives on a lock screen anyone nearby can read. The visit returns to the queue as soon as they reply.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Visit id</td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="post /v1/clinic/visits/{id}/start open a visit for review">
     <summary>
       <span class="verb post">POST</span>
@@ -1489,7 +2057,7 @@
   </details>
           </section><section class="group" id="dispensary">
             <h2>Pharmacy</h2>
-            <p class="meta"><span><b>Called by</b> PHARMACY</span><span><b>Auth</b> Session (Bearer)</span><span><b>16</b> endpoints</span></p>
+            <p class="meta"><span><b>Called by</b> PHARMACY</span><span><b>Auth</b> Session (Bearer)</span><span><b>17</b> endpoints</span></p>
             <p class="group-blurb">The fill queue, shipment and issue reporting, the pharmacy’s own catalogue, its profile, and the connection that carries orders into its own system.</p>
             <details class="op" data-search="get /v1/dispensary/catalog/categories my categories">
     <summary>
@@ -1622,6 +2190,22 @@
         <td class="muted">string</td>
         <td class="muted">Pharmacy order id</td>
       </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/dispensary/orders/{id}/tracking report where the parcel got to">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/dispensary/orders/{id}/tracking</code>
+      <span class="summary">Report where the parcel got to</span>
+    </summary>
+    <div class="body"><p class="desc">You are the only one here who talks to the carrier, so this is how a tracking update reaches the patient and the client business. Until it does, "shipped" is the last thing anybody was told — and "where is it" is the question patients actually ask.
+
+<code>PACKAGE_DELIVERED</code> completes the order. The other three are reports about a parcel still in motion: relayed and recorded, and they change nothing.
+
+The patient is notified only on delivery and on a failed delivery. A push for every carrier scan is how people turn notifications off, and then miss the one that mattered.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted">Pharmacy order id</td>
+      </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="get /v1/dispensary/profile my pharmacy">
     <summary>
       <span class="verb get">GET</span>
@@ -1687,7 +2271,7 @@
   </details>
           </section><section class="group" id="shared">
             <h2>Shared</h2>
-            <p class="meta"><span><b>Called by</b> Any signed-in role</span><span><b>Auth</b> Session (Bearer)</span><span><b>7</b> endpoints</span></p>
+            <p class="meta"><span><b>Called by</b> Any signed-in role</span><span><b>Auth</b> Session (Bearer)</span><span><b>10</b> endpoints</span></p>
             <p class="group-blurb">Notifications and messaging, which every role has in its own scope.</p>
             <details class="op" data-search="get /v1/chat/threads my conversations">
     <summary>
@@ -1718,6 +2302,37 @@
       <span class="summary">Start a conversation</span>
     </summary>
     <div class="body"><p class="desc">Implied participants are added by kind: PATIENT_PROVIDER pulls in the patient, the support kinds pull in Super Admin. A thread naming a patient must be a case thread, not GENERAL — so that it is retained and audited as clinical.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/chat/threads/{id}/attachments send a photograph">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/chat/threads/{id}/attachments</code>
+      <span class="summary">Send a photograph</span>
+    </summary>
+    <div class="body"><p class="desc">This is the answer to "send me a picture of the injection site". The image goes into the conversation, which means it goes into the chart — the clinician prescribes against it and it stays with the record.
+
+PDF, PNG and JPEG only, checked by magic bytes rather than by the browser's claim about the type, and 15MB at most.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="get /v1/chat/threads/{id}/attachments/{attachmentid} open an attachment">
+    <summary>
+      <span class="verb get">GET</span>
+      <code class="path">/v1/chat/threads/{id}/attachments/{attachmentId}</code>
+      <span class="summary">Open an attachment</span>
+    </summary>
+    <div class="body"><p class="desc">Streamed to a participant of the conversation, never served from a public URL. Scoped through the thread, so an attachment id on its own opens nothing — and recorded, because looking at a patient's photograph is a look at their chart.</p><table class="params"><thead><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr></thead><tbody><tr>
+        <td><code>id</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr><tr>
+        <td><code>attachmentId</code><span class="req">required</span></td>
+        <td>path</td>
+        <td class="muted">string</td>
+        <td class="muted"></td>
+      </tr></tbody></table><div class="responses"><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="get /v1/chat/threads/{id}/messages read a conversation">
     <summary>
       <span class="verb get">GET</span>
@@ -1747,6 +2362,15 @@
         <td class="muted">string</td>
         <td class="muted"></td>
       </tr></tbody></table><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
+  </details><details class="op" data-search="post /v1/chat/ticket a short-lived ticket for the message socket">
+    <summary>
+      <span class="verb post">POST</span>
+      <code class="path">/v1/chat/ticket</code>
+      <span class="summary">A short-lived ticket for the message socket</span>
+    </summary>
+    <div class="body"><p class="desc">The access token is held server-side and never reaches browser JavaScript — that is what makes an XSS bug here a defacement rather than a breach. A socket handshake cannot carry a cookie across origins, so this mints a separate ticket that is good for one minute and opens nothing but this person's own conversations.
+
+Stolen, it reads their chat for sixty seconds. The access token would read their whole account until it expired.</p><div class="responses"><span class="status ok"><b>200</b> Success</span><span class="status warn"><b>400</b> Malformed, or failed validation</span><span class="status warn"><b>401</b> No credentials, or they have expired</span><span class="status warn"><b>403</b> Authenticated, but not permitted to do this</span><span class="status warn"><b>404</b> No such record — or not one you may see</span><span class="status warn"><b>429</b> Rate limited</span><span class="status err"><b>500</b> Something broke on our side</span></div></div>
   </details><details class="op" data-search="get /v1/notifications my notifications">
     <summary>
       <span class="verb get">GET</span>

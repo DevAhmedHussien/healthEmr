@@ -35,6 +35,9 @@ const CATEGORIES: Array<{ slug: string; name: string; followUpOf?: string }> = [
   { slug: 'hairlossfollowup', name: 'Hair Loss Follow-up', followUpOf: 'hairloss' },
   { slug: 'skin', name: 'Skin' },
   { slug: 'hormones', name: 'Hormones' },
+  { slug: 'hormonesFollowup', name: 'Hormones Follow-up', followUpOf: 'hormones' },
+  { slug: 'peptides', name: 'Peptides' },
+  { slug: 'peptidesFollowup', name: 'Peptides Follow-up', followUpOf: 'peptides' },
 ];
 
 async function reconcileCategories() {

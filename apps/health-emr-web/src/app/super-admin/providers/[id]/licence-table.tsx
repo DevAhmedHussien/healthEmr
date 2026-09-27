@@ -3,8 +3,10 @@
 import * as React from 'react';
 import { Badge, EmptyState, statusTone } from '@/components/ui/primitives';
 import { formatDateShort } from '@/lib/format';
+import { LicenceRowActions } from '@/components/admin/licence-editor';
 
 export interface Licence {
+  id: string;
   state: string;
   licenseNumber: string;
   status: string;
@@ -35,7 +37,14 @@ const isExpired = (licence: Licence) => new Date(licence.expiresAt) < new Date()
  * acting on, so they are counted above the table rather than relying on the
  * reader to sort and notice.
  */
-export function LicenceTable({ licences }: { licences: Licence[] }) {
+export function LicenceTable({
+  licences,
+  providerId,
+}: {
+  licences: Licence[];
+  /** Given by the platform's own screen, which may change these. Omitted elsewhere. */
+  providerId?: string;
+}) {
   const [sort, setSort] = React.useState<Column>('state');
   const [descending, setDescending] = React.useState(false);
 
@@ -112,13 +121,14 @@ export function LicenceTable({ licences }: { licences: Licence[] }) {
                   </th>
                 );
               })}
+              {providerId ? <th className="w-28 text-right">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
             {rows.map((licence) => {
               const lapsed = isExpired(licence);
               return (
-                <tr key={licence.state}>
+                <tr key={licence.id ?? licence.state}>
                   <td className="font-medium">{licence.state}</td>
                   <td className="tabular-nums">{licence.licenseNumber}</td>
                   <td className="tabular-nums">{formatDateShort(licence.expiresAt)}</td>
@@ -127,6 +137,11 @@ export function LicenceTable({ licences }: { licences: Licence[] }) {
                       {lapsed ? 'expired' : licence.status.toLowerCase()}
                     </Badge>
                   </td>
+                  {providerId ? (
+                    <td>
+                      <LicenceRowActions providerId={providerId} licence={licence} />
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}

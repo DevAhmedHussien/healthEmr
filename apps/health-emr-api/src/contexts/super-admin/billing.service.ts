@@ -18,7 +18,11 @@ export const INVOICE_SORT = ['createdAt', 'issuedAt', 'totalCents', 'status'] as
 export const INVOICE_FILTERS = {
   number: { path: 'number', kind: 'text' },
   tenant: { path: 'tenant.name', kind: 'text' },
-  patient: { path: 'patient.lastName', kind: 'text' },
+  patient: {
+    path: 'patient.lastName',
+    kind: 'name',
+    paths: ['patient.firstName', 'patient.lastName'],
+  },
   // `status` is deliberately absent: the endpoint already takes it as a
   // validated enum, and redeclaring it here as loose text would replace that
   // check with none.

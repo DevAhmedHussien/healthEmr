@@ -8,6 +8,27 @@ import { PrismaClient, type Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { randomBytes } from 'node:crypto';
 
+/**
+ * A seeded clinician's signature.
+ *
+ * Drawn as an SVG path rather than shipped as a binary blob, so the seed stays
+ * readable and each clinician gets a mark of their own rather than everyone
+ * sharing one squiggle. Written unencrypted: `PhiCryptoService.decrypt` passes
+ * through anything without the `phi.v1:` prefix, so seed data reads correctly
+ * while anything a real clinician draws is encrypted on the way in.
+ */
+function seedSignature(name: string): string {
+  // Two loops and a flourish, nudged by the name so they differ from each other.
+  const lean = (name.charCodeAt(0) % 7) - 3;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 70">
+  <path d="M8 52 C ${28 + lean} 14, ${52 + lean} 14, 64 46 S ${96 + lean} 18, 116 44 S 150 12, 168 40 L 232 30"
+        fill="none" stroke="#0d1b2a" stroke-width="2.4" stroke-linecap="round"/>
+</svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
+
+
 const prisma = new PrismaClient();
 
 const hash = (password: string) =>
@@ -179,10 +200,28 @@ async function main(): Promise<void> {
       select: { id: true },
     });
 
+    // A clinician without a signature cannot sign anything, so a seeded one
+    // without a signature is not a working fixture — it is an account that
+    // reaches the last step of the flow and stops.
+    const signatureName = `${spec.first} ${spec.last}, MD`;
     const profile = await prisma.providerProfile.upsert({
       where: { userId: user.id },
-      create: { userId: user.id, npi: spec.npi, credentials: 'MD', maxOpenRequests: 25 },
-      update: {},
+      create: {
+        userId: user.id,
+        npi: spec.npi,
+        credentials: 'MD',
+        maxOpenRequests: 25,
+        signatureImage: seedSignature(signatureName),
+        signatureName,
+        signatureCapturedAt: new Date(),
+      },
+      update: {
+        // Backfilled on a re-seed, so a database created before signatures
+        // existed starts working rather than failing at the last step.
+        signatureImage: seedSignature(signatureName),
+        signatureName,
+        signatureCapturedAt: new Date(),
+      },
       select: { id: true },
     });
     providerIds.push(profile.id);

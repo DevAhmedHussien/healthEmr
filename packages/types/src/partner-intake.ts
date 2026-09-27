@@ -4,7 +4,7 @@ import { US_STATES, VISIT_TYPES } from './enums';
 /**
  * The partner intake contract.
  *
- * Deliberately shaped to match the Beluga / Joey Med `createNoPayPhotos` payload
+ * Deliberately field-compatible with the payload the incumbent accepts
  * field-for-field, so an existing Beluga integration can repoint at HealthEMR by
  * changing a base URL and a token. Their convention — no field may be null,
  * undefined or an empty string unless documented optional — is enforced here with
@@ -149,7 +149,12 @@ export function extractCustomQa(formObj: Record<string, unknown>): Array<{
  */
 export const visitPhotosSchema = z
   .object({
-    visitId: nonEmpty(120, 'visitId'),
+    /**
+     * Optional, because the visit is named in the path. Accepted so a caller
+     * that still sends it is not refused for being explicit — it is ignored,
+     * and the path is what counts.
+     */
+    visitId: z.string().trim().max(120).optional(),
     images: z
       .array(
         z.object({
@@ -218,7 +223,7 @@ export const voidVisitSchema = z
 /**
  * The platform owner correcting a visit, at any stage.
  *
- * Wider than the client's own `PATCH /partner/v1/visit/{masterId}`, which stops
+ * Wider than the client's own `PATCH /partner/v1/visits/{masterId}`, which stops
  * accepting changes once a clinician has decided. This does not stop, because
  * the cases it exists for are the ones that arrive by phone after the fact: a
  * patient who moved, an order routed to the wrong pharmacy, a status that needs
@@ -255,3 +260,36 @@ export const adminVisitPatchSchema = z
 export type AdminVisitPatch = z.infer<typeof adminVisitPatchSchema>;
 
 export type VoidVisitInput = z.infer<typeof voidVisitSchema>;
+
+/**
+ * A patient's message, arriving from the client's own portal.
+ *
+ * Either part may be omitted but not both: a photograph with no words is a
+ * normal reply to "send me a clearer picture", and so is a sentence with no
+ * photograph.
+ */
+export const partnerChatSchema = z
+  .object({
+    apiKey: z.string().trim().min(1, 'apiKey is required'),
+    content: z.string().trim().max(4000).optional(),
+    image: z
+      .object({
+        /** Somewhere we can fetch it from. */
+        url: z.string().trim().url().max(2000).optional(),
+        /** Or the bytes, base64, with or without a data URI prefix. */
+        content: z.string().trim().max(20_000_000).optional(),
+        fileName: z.string().trim().max(255).optional(),
+        mime: z.string().trim().max(120).optional(),
+      })
+      .strict()
+      .refine((value) => Boolean(value.url || value.content), {
+        message: 'Send the image as a url or as base64 content',
+      })
+      .optional(),
+  })
+  .strict()
+  .refine((value) => Boolean(value.content?.trim() || value.image), {
+    message: 'Send a message, an image, or both',
+  });
+
+export type PartnerChatInputDto = z.infer<typeof partnerChatSchema>;

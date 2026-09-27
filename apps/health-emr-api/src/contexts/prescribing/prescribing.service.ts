@@ -464,6 +464,10 @@ export class PrescribingService {
     // the moment of signature.
     let licence: { licenseNumber: string; state: string } | null = null;
     let providerName = '';
+    // Read from the same profile row as the licence, and frozen onto each
+    // prescription below for the same reason: a clinician who redraws their
+    // signature next year has not changed what they put on this one.
+    let signature: { image: string; name: string } | null = null;
 
     if (dispensing.length) {
       const profile = await this.prisma.raw.providerProfile.findUnique({
@@ -495,6 +499,20 @@ export class PrescribingService {
         dispensing.map((item) => item.itemId),
         request.items,
       );
+
+      // Last of the three checks, and deliberately so. Licence and credentials
+      // answer "may you sign this at all"; a missing signature answers "your
+      // setup is incomplete". Raised first, it told a clinician who should not
+      // be signing this medication to go and draw a signature — which is the
+      // wrong instruction, and one they would have followed.
+      if (!profile.signatureImage || !profile.signatureName) {
+        throw new ForbiddenException(
+          'Add your signature before signing a prescription. It is on your profile and takes a moment.',
+        );
+      }
+      // Kept encrypted the whole way through: copied from one column to another
+      // and never needing to be readable in between.
+      signature = { image: profile.signatureImage, name: profile.signatureName };
     }
 
     const signedAt = new Date();
@@ -556,6 +574,8 @@ export class PrescribingService {
             providerNameSnapshot: providerName,
             licenseNumberSnapshot: licence!.licenseNumber,
             licenseStateSnapshot: licence!.state,
+            signatureSnapshot: signature!.image,
+            signatureNameSnapshot: signature!.name,
             signedAt,
             status: 'SIGNED',
           },

@@ -61,7 +61,10 @@ export class ExternalVisitService {
     private readonly routing: RoutingService,
   ) {}
 
-  async updateVisit(tenantId: string, body: UpdateVisitInput): Promise<ExternalResult> {
+  async updateVisit(
+    tenantId: string,
+    body: UpdateVisitInput & { masterId: string },
+  ): Promise<ExternalResult> {
     try {
       const visit = await this.findVisit(tenantId, body.masterId);
       if (!visit) return ok('NO_VISIT', `No visit found for masterId ${body.masterId}`);
@@ -164,7 +167,10 @@ export class ExternalVisitService {
    * A shipped visit is refused. The medication is in the post to a real
    * address, and a record saying it was cancelled would contradict the parcel.
    */
-  async cancelVisit(tenantId: string, body: CancelVisitInput): Promise<ExternalResult> {
+  async cancelVisit(
+    tenantId: string,
+    body: CancelVisitInput & { masterId: string },
+  ): Promise<ExternalResult> {
     try {
       const visit = await this.findVisit(tenantId, body.masterId);
       if (!visit) return ok('NO_VISIT', `No visit found for masterId ${body.masterId}`);
@@ -215,7 +221,7 @@ export class ExternalVisitService {
         tenantId,
         tenantSlug: visit.tenant.slug,
         before: { status: visit.status },
-        after: { status: 'CANCELLED', reason: body.reason, via: 'external/cancelVisit' },
+        after: { status: 'CANCELLED', reason: body.reason, via: 'visits/{masterId}/cancel' },
       });
 
       return ok('VISIT_CANCELLED', `Visit ${body.masterId} cancelled`);
@@ -419,7 +425,7 @@ export class ExternalVisitService {
       before: { retry: visit.rxRetryCount },
       after: {
         retry: visit.rxRetryCount + 1,
-        via: 'external/updateVisit',
+        via: 'visits/{masterId}/outcome',
         // Whose decision this re-issues. The resend is attributed to them, so
         // the trail has to say the client triggered it and they did not.
         reIssuedFrom: original.id,
@@ -431,7 +437,15 @@ export class ExternalVisitService {
     // Dispatch and the patient's message both hang off this, exactly as they do
     // for a first-time signature.
     for (const row of created) {
-      this.events.publish(DomainEvent.PrescriptionSigned, { prescriptionId: row.rxId });
+      // `requestId` is not optional to the subscribers: the webhook dispatcher
+      // resolves the visit from it to find the masterId the client joins on.
+      // Without it every RX_WRITTEN raised through this endpoint died in the
+      // handler, and the client was never told the prescription was written.
+      this.events.publish(DomainEvent.PrescriptionSigned, {
+        prescriptionId: row.rxId,
+        requestId: visit.id,
+        patientId: visit.patientId,
+      });
     }
 
     return {

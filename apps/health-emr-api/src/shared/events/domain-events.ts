@@ -29,10 +29,20 @@ export const DomainEvent = {
   VisitDenied: 'visit.denied',
   PrescriptionSigned: 'prescription.signed',
   OrderSubmitted: 'order.submitted',
-  OrderRejected: 'order.rejected',
   OrderShipped: 'order.shipped',
   OrderDelivered: 'order.delivered',
   ChatMessageSent: 'chat.message',
+  /** Withdrawn here, so a client's CRM stops showing it as in progress. */
+  VisitVoided: 'visit.voided',
+  /** Corrected here, and worth correcting wherever else the patient exists. */
+  PatientNameChanged: 'patient.name_changed',
+  /**
+   * Where the parcel got to, as the carrier reports it.
+   *
+   * Separate from `order.shipped`, which says the pharmacy handed it over.
+   * "Where is my package" is a question about this, not about that.
+   */
+  PackageTracked: 'package.tracked',
 } as const;
 
 export type DomainEventName = (typeof DomainEvent)[keyof typeof DomainEvent];

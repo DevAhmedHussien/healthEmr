@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { api } from '@/lib/api';
+import { useChatSocket, type IncomingMessage } from '@/lib/chat-socket';
 import { Button, Card, EmptyState, Textarea } from '@/components/ui/primitives';
 import { cn } from '@/lib/utils';
 import { SendIcon, PaperclipIcon } from '@/components/ui/icons';
@@ -56,17 +57,23 @@ export function ChatPanel() {
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const fileInput = React.useRef<HTMLInputElement>(null);
 
+  const loadThreads = React.useCallback(
+    () =>
+      api<{ data: Thread[] }>('v1/chat/threads?limit=50')
+        .then(({ data }) => {
+          setThreads(data);
+          // Functional form so `active` is not a dependency — selecting the
+          // first thread should happen only when nothing is selected yet, and
+          // reading the current value here is exactly what the updater is for.
+          setActive((current) => current ?? data[0]?.id ?? null);
+        })
+        .catch(() => setThreads([])),
+    [],
+  );
+
   React.useEffect(() => {
-    void api<{ data: Thread[] }>('v1/chat/threads?limit=50')
-      .then(({ data }) => {
-        setThreads(data);
-        // Functional form so `active` is not a dependency — selecting the first
-        // thread should happen only when nothing is selected yet, and reading
-        // the current value here is exactly what the updater is for.
-        setActive((current) => current ?? data[0]?.id ?? null);
-      })
-      .catch(() => setThreads([]));
-  }, []);
+    void loadThreads();
+  }, [loadThreads]);
 
   const load = React.useCallback(async (threadId: string) => {
     const { data } = await api<{ data: Message[] }>(`v1/chat/threads/${threadId}/messages`);
@@ -104,6 +111,52 @@ export function ChatPanel() {
     }
   };
 
+  /**
+   * A message from the other person, as it is sent.
+   *
+   * Appended rather than refetched: the body is already in the event, and going
+   * back to the server for a page of messages we just received would make the
+   * reply arrive later than it needed to.
+   *
+   * The thread list is refreshed too, so an unread marker appears on a
+   * conversation that is not the one on screen.
+   */
+  const { watch } = useChatSocket(
+    React.useCallback(
+      (incoming: IncomingMessage) => {
+        if (incoming.threadId === active) {
+          setMessages((current) =>
+            // Our own message is already on screen from the send; the socket
+            // echoes it to every participant including the author.
+            current.some((message) => message.id === incoming.messageId)
+              ? current
+              : [
+                  ...current,
+                  {
+                    id: incoming.messageId,
+                    author: incoming.author,
+                    authorRole: incoming.authorRole,
+                    content: incoming.content,
+                    sentAt: incoming.sentAt,
+                    mine: false,
+                    attachments: [],
+                  },
+                ],
+          );
+          return;
+        }
+
+        void loadThreads();
+      },
+      [active, loadThreads],
+    ),
+  );
+
+  // A conversation opened after the socket connected is not in its room yet.
+  React.useEffect(() => {
+    if (active) watch(active);
+  }, [active, watch]);
+
   const activeThread = React.useMemo(
     () => threads.find((thread) => thread.id === active) ?? null,
     [threads, active],
@@ -138,6 +191,10 @@ export function ChatPanel() {
             {threads.map((thread) => (
               <li key={thread.id}>
                 <button
+                  // Which conversation this is, for anything driving the page
+                  // from outside it. Two patients sharing a name is common
+                  // enough that "the first one in the list" is not an address.
+                  data-thread-id={thread.id}
                   onClick={() => setActive(thread.id)}
                   className={cn(
                     'block w-full border-b border-[var(--ar-border-soft)] px-4 py-3 text-left text-sm transition last:border-0',

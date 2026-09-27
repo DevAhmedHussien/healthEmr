@@ -54,7 +54,7 @@ async function main() {
 
   // ── post the intake exactly as a telehealth partner would ──────────────
   const masterId = `DEMO-${Date.now().toString(36).toUpperCase()}`;
-  const response = await fetch(`${API}/partner/v1/visit/createNoPayPhotos`, {
+  const response = await fetch(`${API}/partner/v1/visits`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({

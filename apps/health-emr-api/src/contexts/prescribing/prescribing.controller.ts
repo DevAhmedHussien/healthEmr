@@ -1,5 +1,6 @@
 import {
   Body,
+  Put,
   Controller,
   Get,
   Header,
@@ -15,7 +16,13 @@ import type { Response } from 'express';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import type { AuthenticatedUser } from '@health-emr/types';
-import { Role, decideRequestSchema, providerQueueQuerySchema } from '@health-emr/types';
+import {
+  Role,
+  decideRequestSchema,
+  signatureSchema,
+  providerLicenceInputSchema,
+  providerQueueQuerySchema,
+} from '@health-emr/types';
 import { createZodDto } from '@/shared/http/zod-dto';
 import { Roles } from '@/shared/auth/decorators/roles.decorator';
 import { CurrentUser } from '@/shared/auth/decorators/current-user.decorator';
@@ -28,6 +35,10 @@ import {
 } from '@/shared/http/api-docs';
 import { PrescribingService } from './prescribing.service';
 import { EarningsService } from './earnings.service';
+import { ProviderLicencesService } from '@/contexts/practitioners/provider-licences.service';
+import { ProviderActivityService } from '@/contexts/practitioners/provider-activity.service';
+import { SignatureService } from '@/contexts/practitioners/signature.service';
+import { activityQuerySchema } from '@/contexts/practitioners/activity-query';
 
 class DecideDto extends createZodDto(decideRequestSchema) {}
 
@@ -48,6 +59,9 @@ const requestInformationSchema = z
   .strict();
 class RequestInformationDto extends createZodDto(requestInformationSchema) {}
 class QueueQueryDto extends createZodDto(providerQueueQuerySchema) {}
+class ProviderLicenceDto extends createZodDto(providerLicenceInputSchema) {}
+class SignatureDto extends createZodDto(signatureSchema) {}
+class ActivityQueryDto extends createZodDto(activityQuerySchema) {}
 
 const queueRow = z.object({
   visitId: z.string().uuid(),
@@ -131,6 +145,9 @@ export class PrescribingController {
   constructor(
     private readonly prescribing: PrescribingService,
     private readonly earnings: EarningsService,
+    private readonly licences: ProviderLicencesService,
+    private readonly activity: ProviderActivityService,
+    private readonly signature: SignatureService,
   ) {}
 
   @Get('me/summary')
@@ -161,6 +178,75 @@ export class PrescribingController {
   async earningsLedger(@CurrentUser() user: AuthenticatedUser) {
     const providerId = await this.prescribing.providerIdForUser(user.id);
     return { data: await this.earnings.ledgerFor(providerId) };
+  }
+
+  @Get('me/signature')
+  @ApiOperation({
+    summary: 'My signature',
+    description:
+      'What is on file, and when it was drawn. Held encrypted and returned only to the clinician ' +
+      'it belongs to.',
+  })
+  @ApiStandardErrors()
+  async mySignature(@CurrentUser() user: AuthenticatedUser) {
+    const providerId = await this.prescribing.providerIdForUser(user.id);
+    return this.signature.forProvider(providerId);
+  }
+
+  @Put('me/signature')
+  @ApiOperation({
+    summary: 'Draw or replace my signature',
+    description:
+      'Drawn once and applied at each signing, rather than redrawn sixty times in an afternoon — ' +
+      'what makes each signing deliberate is the confirmation at the point of signing. Replacing ' +
+      'it changes nothing already signed: every prescription keeps its own copy from the moment ' +
+      'it was signed.',
+  })
+  @ApiZodBody(SignatureDto)
+  @ApiStandardErrors()
+  async captureSignature(@CurrentUser() user: AuthenticatedUser, @Body() body: SignatureDto) {
+    const providerId = await this.prescribing.providerIdForUser(user.id);
+    return this.signature.capture(providerId, body, user.id);
+  }
+
+  @Get('me/activity')
+  @ApiOperation({
+    summary: 'My hours, day by day',
+    description:
+      'How long I was actually working each day, worked out from the actions I took rather than ' +
+      'from how long a tab was open. A gap longer than the idle window ends a session.',
+  })
+  @ApiStandardErrors()
+  async myActivity(@CurrentUser() user: AuthenticatedUser, @Query() query: ActivityQueryDto) {
+    return this.activity.forUser(user.id, query.days, query.timeZone);
+  }
+
+  @Get('me/licences')
+  @ApiOperation({
+    summary: 'The states I am licensed in',
+    description:
+      'What the platform holds for me, including any I have added that are still waiting to be ' +
+      'checked. Only ACTIVE licences are used to route visits.',
+  })
+  @ApiStandardErrors()
+  async myLicences(@CurrentUser() user: AuthenticatedUser) {
+    const providerId = await this.prescribing.providerIdForUser(user.id);
+    return this.licences.list(providerId);
+  }
+
+  @Post('me/licences')
+  @ApiOperation({
+    summary: 'Add a state I am licensed in',
+    description:
+      'Recorded as PENDING and checked by the platform before it counts. Visits are routed only ' +
+      'on an ACTIVE licence, so adding one here does not by itself let me review patients in ' +
+      'that state — which is deliberate, since nobody has verified it yet.',
+  })
+  @ApiZodBody(ProviderLicenceDto)
+  @ApiStandardErrors()
+  async addMyLicence(@CurrentUser() user: AuthenticatedUser, @Body() body: ProviderLicenceDto) {
+    const providerId = await this.prescribing.providerIdForUser(user.id);
+    return this.licences.add(providerId, body, user.id, false);
   }
 
   @Get('queue')

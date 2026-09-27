@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Role } from './roles';
+import type { PlatformPermission } from './roles';
 
 export const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email is required').email('Enter a valid email address'),
@@ -63,4 +64,13 @@ export interface AuthenticatedUser {
   lastName: string;
   role: Role;
   tenantId: string | null;
+  /**
+   * Deliberately absent from the token.
+   *
+   * Grants are read at the moment they are checked, not carried in the JWT: a
+   * permission an owner has just revoked must stop working now, and a token
+   * lives for fifteen minutes. Present on this type only so a freshly-loaded
+   * user can be passed to `hasPermission`.
+   */
+  permissions?: readonly PlatformPermission[];
 }

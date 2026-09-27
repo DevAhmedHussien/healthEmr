@@ -52,6 +52,9 @@ export const NAV: Record<Role, NavItem[]> = {
     { label: 'My decisions', href: '/clinic/decisions', group: 'Clinical', icon: CheckCircleIcon },
     { label: 'Messages', href: '/clinic/messages', group: 'Clinical', icon: MessageIcon },
     { label: 'Work and pay', href: '/clinic/earnings', group: 'Clinical', icon: TrendingUpIcon },
+    { label: 'My hours', href: '/clinic/hours', group: 'Clinical', icon: TrendingUpIcon },
+    { label: 'My licences', href: '/clinic/licences', group: 'Clinical', icon: BriefcaseIcon },
+    { label: 'My signature', href: '/clinic/signature', group: 'Clinical', icon: RxPadIcon },
   ],
   PHARMACY: [
     { label: 'Fill queue', href: '/dispensary', group: 'Dispensing', icon: MortarIcon },
@@ -95,6 +98,12 @@ export const NAV: Record<Role, NavItem[]> = {
       group: 'Directory',
       icon: StethoscopeIcon,
     },
+    {
+      label: 'Clinician activity',
+      href: '/super-admin/providers/activity',
+      group: 'Directory',
+      icon: PulseIcon,
+    },
     { label: 'Pharmacies', href: '/super-admin/pharmacies', group: 'Directory', icon: MortarIcon },
     { label: 'Medications', href: '/super-admin/medications', group: 'Directory', icon: PillIcon },
 
@@ -120,9 +129,29 @@ export const NAV: Record<Role, NavItem[]> = {
     { label: 'Activity log', href: '/super-admin/activity', group: 'Governance', icon: ShieldIcon },
     { label: 'Messages', href: '/super-admin/messages', group: 'Governance', icon: MessageIcon },
   ],
+
+  /**
+   * Filled in below, from the super admin's own list.
+   *
+   * An owner does the same work in the same place — the difference is what they
+   * are allowed to do, not where they go to do it. Duplicating twenty entries
+   * here would guarantee the two drift.
+   */
+  OWNER: [],
 };
 
+NAV.OWNER = [
+  ...NAV.SUPER_ADMIN,
+  {
+    label: 'Super admins',
+    href: '/super-admin/team',
+    group: 'Owner',
+    icon: KeyIcon,
+  },
+];
+
 export const ROLE_LABEL: Record<Role, string> = {
+  OWNER: 'Platform',
   PATIENT: 'Patient portal',
   PROVIDER: 'Clinic',
   PHARMACY: 'Dispensary',

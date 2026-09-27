@@ -8,6 +8,7 @@ import {
   pharmacyOrderTableQuerySchema,
   pharmacyQueueQuerySchema,
   shipOrderSchema,
+  trackingUpdateSchema,
 } from '@health-emr/types';
 import { createZodDto } from '@/shared/http/zod-dto';
 import { Roles } from '@/shared/auth/decorators/roles.decorator';
@@ -23,6 +24,7 @@ import { FulfilmentService, ORDER_FILTERS } from './fulfilment.service';
 import { columnFilterShape } from '@/shared/http/column-filters';
 
 class ShipDto extends createZodDto(shipOrderSchema) {}
+class TrackingUpdateDto extends createZodDto(trackingUpdateSchema) {}
 class FlagIssueDto extends createZodDto(flagOrderIssueSchema) {}
 class QueueQueryDto extends createZodDto(pharmacyQueueQuerySchema) {}
 const orderTableSchema = pharmacyOrderTableQuerySchema.extend(columnFilterShape(ORDER_FILTERS));
@@ -126,6 +128,38 @@ export class FulfilmentController {
   ) {
     const pharmacyId = await this.fulfilment.pharmacyIdForUser(user.id);
     return this.fulfilment.ship(pharmacyId, id, user.id, body);
+  }
+
+  @Post('orders/:id/tracking')
+  @HttpCode(200)
+  @ApiParam({ name: 'id', format: 'uuid', description: 'Pharmacy order id' })
+  @ApiOperation({
+    summary: 'Report where the parcel got to',
+    description:
+      'You are the only one here who talks to the carrier, so this is how a tracking update ' +
+      'reaches the patient and the client business. Until it does, "shipped" is the last thing ' +
+      'anybody was told — and "where is it" is the question patients actually ask.\n\n' +
+      '`PACKAGE_DELIVERED` completes the order. The other three are reports about a parcel still ' +
+      'in motion: relayed and recorded, and they change nothing.\n\n' +
+      'The patient is notified only on delivery and on a failed delivery. A push for every ' +
+      'carrier scan is how people turn notifications off, and then miss the one that mattered.',
+  })
+  @ApiZodBody(TrackingUpdateDto)
+  @ApiZodOk(
+    z.object({
+      id: z.string().uuid(),
+      status: z.string(),
+      occurredAt: z.string(),
+    }),
+  )
+  @ApiStandardErrors()
+  async tracking(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: TrackingUpdateDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const pharmacyId = await this.fulfilment.pharmacyIdForUser(user.id);
+    return this.fulfilment.trackingUpdate(pharmacyId, id, user.id, body);
   }
 
   @Post('orders/:id/issue')

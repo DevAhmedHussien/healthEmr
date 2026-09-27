@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { ListQuery, VisitStage } from '@health-emr/types';
 import { visitStage } from '@health-emr/types';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { PhiCryptoService } from '@/shared/crypto/phi-crypto.service';
 import { AuditService } from '@/shared/audit/audit.service';
+import { EventBus } from '@/shared/events/event-bus.service';
+import { DomainEvent } from '@/shared/events/domain-events';
 import {
   buildOrderBy,
   listResponse,
@@ -31,17 +33,31 @@ export const VISIT_SORT = ['createdAt', 'decidedAt', 'status'] as const;
  */
 export const VISIT_FILTERS = {
   masterId: { path: 'externalMasterId', kind: 'text' },
-  patient: { path: 'patient.lastName', kind: 'text' },
+  patient: {
+    path: 'patient.lastName',
+    kind: 'name',
+    paths: ['patient.firstName', 'patient.lastName'],
+  },
   email: { path: 'patient.email', kind: 'text' },
   phone: { path: 'patient.phone', kind: 'text' },
   tenant: { path: 'tenant.name', kind: 'text' },
-  category: { path: 'category.slug', kind: 'exact' },
+  // The column shows "Weight Loss" and the slug is `weightloss`, so an exact
+  // match on either alone fails for whatever the reader actually typed.
+  category: {
+    path: 'category.name',
+    kind: 'name',
+    paths: ['category.name', 'category.slug'],
+  },
   requestStatus: {
     path: 'status',
     kind: 'exact',
     values: ['RECEIVED', 'PENDING_ASSIGNMENT', 'ASSIGNED', 'IN_REVIEW', 'INFO_REQUESTED', 'APPROVED', 'DENIED', 'EXPIRED', 'CANCELLED'],
   },
-  provider: { path: 'assignedProvider.user.lastName', kind: 'text' },
+  provider: {
+    path: 'assignedProvider.user.lastName',
+    kind: 'name',
+    paths: ['assignedProvider.user.firstName', 'assignedProvider.user.lastName'],
+  },
   patientState: { path: 'submission.patientStateAtSubmission', kind: 'exact' },
   reason: { path: 'denialReason', kind: 'text' },
   shipment: { path: 'prescriptions[].orders[].status', kind: 'exact', values: ['QUEUED', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_FULFILMENT', 'SHIPPED', 'DELIVERED', 'REJECTED', 'CANCELLED'] },
@@ -55,7 +71,7 @@ export const VISIT_FILTERS = {
 /** Filterable columns of the patients table, keyed by the column id. */
 export const PATIENT_FILTERS = {
   mrn: { path: 'mrn', kind: 'text' },
-  lastName: { path: 'lastName', kind: 'text' },
+  lastName: { path: 'lastName', kind: 'name', paths: ['firstName', 'lastName'] },
   email: { path: 'email', kind: 'text' },
   phone: { path: 'phone', kind: 'text' },
   residenceState: { path: 'residenceState', kind: 'exact' },
@@ -70,13 +86,22 @@ export const PATIENT_FILTERS = {
 /** Filterable columns of the prescriptions table, keyed by the column id. */
 export const PRESCRIPTION_FILTERS = {
   medication: { path: 'medication.name', kind: 'text' },
-  patient: { path: 'patient.lastName', kind: 'text' },
+  patient: {
+    path: 'patient.lastName',
+    kind: 'name',
+    paths: ['patient.firstName', 'patient.lastName'],
+  },
   email: { path: 'patient.email', kind: 'text' },
   phone: { path: 'patient.phone', kind: 'text' },
   patientState: { path: 'patient.residenceState', kind: 'exact' },
   tenant: { path: 'tenant.name', kind: 'text' },
   prescriber: { path: 'providerNameSnapshot', kind: 'text' },
-  licence: { path: 'licenseNumberSnapshot', kind: 'text' },
+  // Rendered as `AZ-12345 (AZ)`, from two columns.
+  licence: {
+    path: 'licenseNumberSnapshot',
+    kind: 'name',
+    paths: ['licenseNumberSnapshot', 'licenseStateSnapshot'],
+  },
   masterId: { path: 'request.externalMasterId', kind: 'text' },
   shipment: { path: 'orders[].status', kind: 'exact', values: ['QUEUED', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_FULFILMENT', 'SHIPPED', 'DELIVERED', 'REJECTED', 'CANCELLED'] },
   tracking: { path: 'orders[].trackingNumber', kind: 'text' },
@@ -101,6 +126,7 @@ export class ClinicalService {
     private readonly prisma: PrismaService,
     private readonly phi: PhiCryptoService,
     private readonly audit: AuditService,
+    private readonly events: EventBus,
   ) {}
 
   async listPatients(query: ListQuery & { state?: string; tenantId?: string }) {
@@ -176,6 +202,65 @@ export class ClinicalService {
   }
 
   /** One complete chart. Nothing is withheld from this role — and it is logged. */
+  /**
+   * Correct a patient's name.
+   *
+   * The name arrives from whichever client business took the order, typed by
+   * the patient into a checkout form — so it is wrong often enough to matter:
+   * a nickname where the ID says otherwise, a missing accent, two surnames
+   * collapsed into one. A pharmacy label that disagrees with the government ID
+   * presented at collection is a parcel that does not get handed over.
+   *
+   * The correction is announced outward as well as recorded, because every
+   * client business that has sent us this patient is still holding the old
+   * spelling. Sent per visit, since masterId is the only key they can join on.
+   *
+   * Gated on break-the-glass rather than a permission of its own: correcting a
+   * chart means opening it first, and whoever may do that is the same set of
+   * people who should be trusted to fix a name in it.
+   */
+  async correctName(
+    id: string,
+    input: { firstName: string; lastName: string; reason: string },
+    actorUserId: string,
+  ) {
+    const before = await this.prisma.raw.patient.findUnique({
+      where: { id },
+      select: { id: true, firstName: true, lastName: true, userId: true },
+    });
+    if (!before) throw new NotFoundException('That patient does not exist');
+
+    const firstName = input.firstName.trim();
+    const lastName = input.lastName.trim();
+
+    if (firstName === before.firstName && lastName === before.lastName) {
+      throw new BadRequestException('That is the name already on the chart');
+    }
+
+    await this.prisma.raw.$transaction(async (tx) => {
+      await tx.patient.update({ where: { id }, data: { firstName, lastName } });
+      // The login carries the same name, and leaving it behind would mean the
+      // patient is greeted by the spelling they asked us to fix.
+      if (before.userId) {
+        await tx.user.update({ where: { id: before.userId }, data: { firstName, lastName } });
+      }
+    });
+
+    await this.audit.record({
+      action: 'PHI_UPDATED',
+      entityType: 'Patient',
+      entityId: id,
+      patientId: id,
+      actorUserId,
+      before: { firstName: before.firstName, lastName: before.lastName },
+      after: { firstName, lastName, reason: input.reason },
+    });
+
+    this.events.publish(DomainEvent.PatientNameChanged, { patientId: id, firstName, lastName });
+
+    return { id, firstName, lastName };
+  }
+
   async getPatient(id: string, actorUserId: string) {
     const patient = await this.prisma.raw.patient.findUnique({
       where: { id },

@@ -203,7 +203,7 @@ export function ApiAccessPanel({
           >
             <Copyable value={access.companyKey} label="company key" />
           </Field>
-          <Field label="Base URL" hint="Visits are posted to /partner/v1/visit/createNoPayPhotos.">
+          <Field label="Base URL" hint="Visits are posted to /partner/v1/visits.">
             <Copyable value={access.baseUrl} label="base URL" mono={false} />
           </Field>
           <Field
@@ -212,7 +212,7 @@ export function ApiAccessPanel({
           >
             <Copyable
               value={
-                `curl -X POST ${access.baseUrl}/partner/v1/visit/createNoPayPhotos \\\n` +
+                `curl -X POST ${access.baseUrl}/partner/v1/visits \\\n` +
                 `  -H "Authorization: Bearer <your key>" \\\n` +
                 `  -H "Content-Type: application/json" \\\n` +
                 `  -d '{"company":"${access.companyKey}","visitType":"weightloss",` +

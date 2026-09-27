@@ -188,7 +188,7 @@ describe('a visit shared between two clinicians (e2e)', () => {
 
   it('accepts one visit carrying two categories, and shares it out', async () => {
     const response = await request(app.getHttpServer())
-      .post('/partner/v1/visit/createNoPayPhotos')
+      .post('/partner/v1/visits')
       .set('Authorization', `Bearer ${apiKey}`)
       .send({
         masterId,

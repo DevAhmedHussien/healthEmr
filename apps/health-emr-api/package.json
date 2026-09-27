@@ -25,7 +25,11 @@
     "db:seed-prices": "ts-node -r tsconfig-paths/register scripts/seed-sell-prices.ts",
     "db:seed-first-choice": "ts-node -r tsconfig-paths/register scripts/seed-first-choice-catalogue.ts",
     "db:reconcile": "ts-node -r tsconfig-paths/register scripts/reconcile-catalogue.ts",
-    "verify:filters": "node scripts/verify-column-filters.mjs"
+    "verify:filters": "node scripts/verify-column-filters.mjs",
+    "db:seed-hallandale": "ts-node -r tsconfig-paths/register scripts/seed-hallandale.ts",
+    "verify:filter-results": "node scripts/verify-filter-results.mjs",
+    "verify:partner-events": "node scripts/verify-partner-events.mjs",
+    "journey:tila": "node scripts/tila-journey.mjs"
   },
   "prisma": {
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"

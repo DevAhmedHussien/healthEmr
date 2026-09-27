@@ -9,6 +9,7 @@ import {
   type RegisterOptions,
 } from 'react-hook-form';
 import { cn } from '@/lib/utils';
+import { ChipGrid } from './state-chips';
 import { MASKS, type MaskName } from './masks';
 import { SimpleSelect } from '@/components/ui/select';
 
@@ -330,44 +331,16 @@ export function ChipsField<T extends FieldValues>({
       <Controller
         control={control}
         name={name}
-        render={({ field }) => {
-          const chosen: string[] = Array.isArray(field.value) ? field.value : [];
-          return (
-            <div
-              className={cn(
-                'grid max-h-52 gap-1.5 overflow-y-auto rounded-[var(--ar-radius)] border p-3',
-                error ? 'border-[var(--ar-danger)]' : 'border-[var(--ar-gray-300)]',
-              )}
-              style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-            >
-              {options.map((option) => {
-                const active = chosen.includes(option.value);
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() =>
-                      field.onChange(
-                        active
-                          ? chosen.filter((value) => value !== option.value)
-                          : [...chosen, option.value],
-                      )
-                    }
-                    className={cn(
-                      'rounded-[var(--ar-radius)] px-2 py-1 text-[0.78rem] transition',
-                      active
-                        ? 'bg-[var(--ar-primary)] text-white'
-                        : 'bg-[var(--ar-gray-50)] text-[var(--ar-text-muted)] hover:bg-[var(--ar-gray-200)]',
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          );
-        }}
+        render={({ field }) => (
+          <ChipGrid
+            options={options}
+            value={Array.isArray(field.value) ? field.value : []}
+            onChange={field.onChange}
+            columns={columns}
+            invalid={Boolean(error)}
+            ariaLabel={label}
+          />
+        )}
       />
     </Shell>
   );

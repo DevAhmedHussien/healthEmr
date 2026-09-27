@@ -3,7 +3,9 @@ import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import type { AuthenticatedUser } from '@health-emr/types';
 import { Role, VISIT_STAGES, listQuerySchema } from '@health-emr/types';
+import { RequiresPermission } from '@/shared/auth/decorators/permissions.decorator';
 import { createZodDto } from '@/shared/http/zod-dto';
+import { PlatformPermission } from '@health-emr/types';
 import { Roles } from '@/shared/auth/decorators/roles.decorator';
 import { CurrentUser } from '@/shared/auth/decorators/current-user.decorator';
 import { ApiKeysetQuery, ApiStandardErrors, ApiZodBody, ApiZodOk } from '@/shared/http/api-docs';
@@ -127,6 +129,19 @@ const bucket = z.object({
  * is the one role that reads across every client business. An Admin reaching any
  * of these gets a 403 from the API, not a hidden button in the UI.
  */
+/** A name correction, with the reason it was needed. */
+const correctNameSchema = z
+  .object({
+    firstName: z.string().trim().min(1, 'A first name is required').max(100),
+    lastName: z.string().trim().min(1, 'A last name is required').max(100),
+    // Required: a name changing on a chart with no explanation is indistinguishable
+    // from the wrong chart having been opened.
+    reason: z.string().trim().min(5, 'Say why the name is being corrected').max(500),
+  })
+  .strict();
+
+class CorrectNameDto extends createZodDto(correctNameSchema) {}
+
 @ApiTags('super-admin')
 @Roles(Role.SUPER_ADMIN)
 @Controller({ path: 'super-admin', version: '1' })
@@ -206,6 +221,7 @@ export class SuperAdminController {
   }
 
   @Get('revenue/summary')
+  @RequiresPermission(PlatformPermission.FINANCE_VIEW)
   @ApiOperation({
     summary: 'Revenue, cost and profit across the platform',
     description:
@@ -220,6 +236,7 @@ export class SuperAdminController {
   }
 
   @Get('revenue/series')
+  @RequiresPermission(PlatformPermission.FINANCE_VIEW)
   @ApiOperation({
     summary: 'Revenue over time',
     description:
@@ -234,6 +251,7 @@ export class SuperAdminController {
   }
 
   @Get('revenue/by-tenant')
+  @RequiresPermission(PlatformPermission.FINANCE_VIEW)
   @ApiOperation({
     summary: 'Revenue and profit per client business',
     description: 'Which accounts earn their keep. Clients that ordered nothing are included.',
@@ -244,6 +262,7 @@ export class SuperAdminController {
   }
 
   @Get('revenue/unpriced')
+  @RequiresPermission(PlatformPermission.FINANCE_VIEW)
   @ApiOperation({
     summary: 'Products priced in a way that loses money',
     description:
@@ -281,6 +300,33 @@ export class SuperAdminController {
   @ApiStandardErrors()
   patient(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.clinical.getPatient(id, user.id);
+  }
+
+  @Post('patients/:id/name')
+  @HttpCode(200)
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @RequiresPermission(PlatformPermission.BREAK_THE_GLASS)
+  @ApiOperation({
+    summary: "Correct a patient's name",
+    description:
+      'Names arrive typed into a client business\u2019s checkout form, so they are wrong often ' +
+      'enough to matter — a nickname where the ID says otherwise, two surnames collapsed into ' +
+      'one. A pharmacy label that disagrees with the ID presented at collection is a parcel that ' +
+      'does not get handed over.\n\nThe correction goes out to every client business holding ' +
+      'this patient, once per visit, because masterId is the only key they can join on. The ' +
+      'reason is recorded against the chart.',
+  })
+  @ApiZodBody(CorrectNameDto)
+  @ApiZodOk(
+    z.object({ id: z.string().uuid(), firstName: z.string(), lastName: z.string() }),
+  )
+  @ApiStandardErrors()
+  correctName(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: CorrectNameDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clinical.correctName(id, body, user.id);
   }
 
   @Get('prescriptions')

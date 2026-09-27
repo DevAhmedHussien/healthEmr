@@ -181,7 +181,7 @@ async function main() {
   chosenPharmacyId = pharmacy.pharmacyId;
 
   const { payload: catalogue } = await call(
-    `/partner/v1/pharmacies/${pharmacy.pharmacyId}/medications`,
+    `/partner/v1/pharmacies/${pharmacy.pharmacyId}/catalog`,
     { token: partner },
   );
 
@@ -214,7 +214,7 @@ async function main() {
   // runs before the controller, so an empty body is refused for being empty and
   // proves nothing about who is allowed to send it.
   const probe = (token: string | null | undefined, company: string, masterId = `probe-${stamp}`) =>
-    call('/partner/v1/visit/createNoPayPhotos', {
+    call('/partner/v1/visits', {
       token,
       method: 'POST',
       body: visitBody({ company, masterId }),
@@ -236,7 +236,7 @@ async function main() {
   const product = chosenProduct;
   const masterId = `walkthrough-${stamp}`;
 
-  const { payload: submitted } = await call('/partner/v1/visit/createNoPayPhotos', {
+  const { payload: submitted } = await call('/partner/v1/visits', {
     token: partner,
     method: 'POST',
     expect: 200,
@@ -256,7 +256,7 @@ async function main() {
   // ── 4b ───────────────────────────────────────────────────────────────────
   section('The client corrects a typo before anyone has acted on it');
 
-  const corrected = await call(`/partner/v1/visit/${masterId}`, {
+  const corrected = await call(`/partner/v1/visits/${masterId}`, {
     token: partner,
     method: 'PATCH',
     expect: 200,
@@ -268,7 +268,7 @@ async function main() {
     corrected.payload?.data?.changed?.join(', '),
   );
 
-  const notMine = await call(`/partner/v1/visit/does-not-exist-${stamp}`, {
+  const notMine = await call(`/partner/v1/visits/does-not-exist-${stamp}`, {
     token: partner,
     method: 'PATCH',
     body: { city: 'Dallas' },
@@ -279,7 +279,7 @@ async function main() {
     notMine.payload?.error,
   );
 
-  const clinicalEdit = await call(`/partner/v1/visit/${masterId}`, {
+  const clinicalEdit = await call(`/partner/v1/visits/${masterId}`, {
     token: partner,
     method: 'PATCH',
     body: { A1: 'Actually about two years.' },
@@ -289,8 +289,8 @@ async function main() {
   // ── 5 ────────────────────────────────────────────────────────────────────
   section('It reaches a clinician, who reads the chart before deciding');
 
-  const { payload: tracked } = await call(`/partner/v1/visit/${masterId}`, { token: partner });
-  ok('the client can follow its own visit', tracked.status === 200, tracked.data?.status);
+  const { payload: tracked } = await call(`/partner/v1/visits/${masterId}`, { token: partner });
+  ok('the client can follow its own visit', tracked.status === 200, tracked.visitStatus);
 
   const providerEmail = await assignedProviderEmail(visitId);
   ok('it was routed to a licensed clinician', Boolean(providerEmail), providerEmail ?? undefined);

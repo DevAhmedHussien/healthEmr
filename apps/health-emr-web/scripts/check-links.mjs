@@ -5,7 +5,9 @@
  * exist. A link is part of the contract a UI makes with its user, so it gets a
  * test like anything else.
  */
-const WEB = 'http://localhost:3000';
+import { readFileSync } from 'node:fs';
+
+const WEB = 'http://localhost:3005';
 
 async function session(email, password) {
   const jar = new Map();
@@ -44,8 +46,32 @@ const clinicVisitId = (await (await reyes.get('/api/bff/v1/clinic/queue?limit=1'
 const joey = await session('admin@joeymed.test', 'Admin!2026');
 const adminVisitId = (await (await joey.get('/api/bff/v1/admin/visits?pageSize=1')).json()).data?.[0]?.id;
 
+
+/**
+ * The nav entries, read from the source of truth.
+ *
+ * This check previously carried its own hand-written list of paths, which meant
+ * it could not do the one job it exists for: a nav entry added afterwards
+ * pointed at a page nobody here had heard of, and the run still reported "no
+ * dead links". Parsing `nav.ts` is crude, but being crude and complete beats
+ * being tidy and blind.
+ */
+function navPathsByRole() {
+  const source = readFileSync(new URL('../src/components/portal/nav.ts', import.meta.url), 'utf8');
+  const byRole = {};
+  // Each role's array runs from `ROLE: [` to the line that closes it.
+  for (const match of source.matchAll(/^\s{2}([A-Z_]+): \[([\s\S]*?)^\s{2}\],/gm)) {
+    const [, role, block] = match;
+    byRole[role] = [...block.matchAll(/href: '([^']+)'/g)].map((entry) => entry[1]);
+  }
+  return byRole;
+}
+
+const NAV = navPathsByRole();
+
 const ROLES = [
   { who: 'super@healthemr.test', pw: 'Super!2026', paths: [
+    ...(NAV.SUPER_ADMIN ?? []),
     '/super-admin', '/super-admin/applications',
     `/super-admin/applications/provider/${provApp?.id}`,
     `/super-admin/applications/pharmacy/${pharmApp?.id}`,
@@ -61,15 +87,17 @@ const ROLES = [
     ...(invoiceId ? [`/super-admin/invoices/${invoiceId}`] : []),
   ]},
   { who: 'admin@joeymed.test', pw: 'Admin!2026', paths: [
+    ...(NAV.ADMIN ?? []),
     '/admin', '/admin/patients', '/admin/visits', '/admin/prescriptions', '/admin/messages',
     ...(adminVisitId ? [`/admin/visits/${adminVisitId}`] : []),
   ]},
   { who: 'dr.reyes@healthemr.test', pw: 'Provider!2026', paths: [
+    ...(NAV.PROVIDER ?? []),
     '/clinic', '/clinic/earnings', '/clinic/messages',
     ...(clinicVisitId ? [`/clinic/visits/${clinicVisitId}`] : []),
   ]},
-  { who: 'rx@firstchoice.test', pw: 'Pharmacy!2026', paths: ['/dispensary', '/dispensary/catalog', '/dispensary/settings', '/dispensary/messages'] },
-  { who: 'sofia.reyes@demo.test', pw: 'Patient!2026', paths: ['/portal', '/portal/visits', '/portal/prescriptions', '/portal/messages'] },
+  { who: 'rx@firstchoice.test', pw: 'Pharmacy!2026', paths: [...(NAV.PHARMACY ?? []), '/dispensary', '/dispensary/catalog', '/dispensary/settings', '/dispensary/messages'] },
+  { who: 'sofia.reyes@demo.test', pw: 'Patient!2026', paths: [...(NAV.PATIENT ?? []), '/portal', '/portal/visits', '/portal/prescriptions', '/portal/messages'] },
 ];
 const PUBLIC = [
   '/welcome', '/login', '/apply/pharmacy', '/apply/provider',
@@ -86,12 +114,13 @@ console.log(`  public: ${PUBLIC.length - dead}/${PUBLIC.length} OK`);
 
 for (const role of ROLES) {
   const s = await session(role.who, role.pw);
+  const paths = [...new Set(role.paths)];
   let bad = 0;
-  for (const path of role.paths) {
+  for (const path of paths) {
     const r = await s.get(path);
     if (r.status !== 200) { bad++; dead++; console.log(`  DEAD ${r.status} ${path}  (${s.user.role})`); }
   }
-  console.log(`  ${s.user.role.padEnd(12)} ${role.paths.length - bad}/${role.paths.length} OK`);
+  console.log(`  ${s.user.role.padEnd(12)} ${paths.length - bad}/${paths.length} OK`);
 }
 
 console.log(dead === 0 ? '\n  NO DEAD LINKS' : `\n  ${dead} DEAD LINKS`);

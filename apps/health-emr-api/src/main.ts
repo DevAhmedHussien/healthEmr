@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { APP_CONFIG } from './shared/config/config.module';
 import type { AppConfig } from './shared/config/configuration';
+import { rewriteRetiredPartnerPaths } from './contexts/partner-api/legacy-paths.middleware';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
@@ -13,6 +14,9 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('bootstrap');
 
   app.use(helmet({ crossOriginEmbedderPolicy: false }));
+  // Ahead of the router, so a retired partner path is routed as its replacement
+  // rather than 404ing an integration written against the old contract.
+  app.use(rewriteRetiredPartnerPaths);
 
   app.enableCors({
     origin: config.corsOrigins,
@@ -61,7 +65,7 @@ async function bootstrap(): Promise<void> {
         .addTag(
           'partner',
           'The integration surface. Authenticate with a tenant API key (Authorize → tenant-api-key), ' +
-            'then POST a visit to /partner/v1/visit/createNoPayPhotos.',
+            'then POST a visit to /partner/v1/visits.',
         )
         .addTag('auth', 'Sessions and tokens')
         .addTag('clinic', 'Provider queue, review and signing')

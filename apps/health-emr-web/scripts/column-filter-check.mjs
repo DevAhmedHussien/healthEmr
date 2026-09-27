@@ -8,7 +8,7 @@
  */
 import { chromium } from 'playwright';
 
-const BASE = process.env.BASE ?? 'http://localhost:3000';
+const BASE = process.env.BASE ?? 'http://localhost:3005';
 const browser = await chromium.launch({ channel: 'chrome' });
 const page = await browser.newPage();
 
@@ -142,6 +142,53 @@ await page.goto(`${BASE}/super-admin/visits`);
 await page.waitForLoadState('networkidle');
 await openFilters();
 
+/**
+ * A name column holds two fields joined for display.
+ *
+ * This check used to type a surname fragment, which matched the one field the
+ * filter looked at — so it passed while typing a first name, or the whole name
+ * as it appears in the cell, found nothing at all.
+ */
+console.log('\nSearching a name the way it is displayed');
+await page.goto(`${BASE}/super-admin/patients`);
+await page.waitForSelector('table tbody tr');
+await page.locator('.ar-skeleton').first().waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
+await openFilters();
+
+// Taken from the API through the page's own session rather than scraped out of
+// a cell: column order shifts with the selection checkbox and hidden columns,
+// and a check that silently reads the wrong cell reports success on nonsense.
+const shown = await page.evaluate(() =>
+  fetch('/api/bff/v1/super-admin/patients?pageSize=1')
+    .then((r) => r.json())
+    .then((b) => b.data[0]?.name ?? ''),
+);
+const [firstWord, ...restWords] = shown.split(/\s+/);
+const surname = restWords.join(' ');
+ok('a patient with a two-part name to search for', Boolean(firstWord && surname), shown);
+
+const nameBox = page.locator('tr.ar-filter-row').getByLabel('Filter by Patient').first();
+
+for (const [label, term] of [
+  ['a surname', surname],
+  ['a first name', firstWord],
+  ['the whole name, as the cell shows it', shown],
+  ['the words the other way round', `${surname} ${firstWord}`],
+]) {
+  await typeFilter(nameBox, 'lastName', term);
+  const found = await page.locator('table tbody tr').count();
+  const empty = await page.getByText('No results', { exact: true }).count();
+  ok(`${label} finds somebody — "${term}"`, empty === 0 && found > 0, `${found} rows`);
+}
+
+await typeFilter(nameBox, 'lastName', '');
+
+// Back to the visits table, which the remaining steps are written against.
+await page.goto(`${BASE}/super-admin/visits`);
+await page.waitForSelector('table tbody tr');
+await page.locator('.ar-skeleton').first().waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
+await openFilters();
+
 console.log('\nThe server is doing the filtering');
 // A page holds 25 rows; if the whole set is larger and a filter returns more
 // than one page, the browser cannot have done it from what it had.
@@ -234,6 +281,33 @@ for (const [path, label] of TABLES) {
   await settle();
 
   ok(label, refused.length === 0, refused[0] ?? `${count} columns filterable`);
+
+  // And that no column was left out. Every header should offer either a control
+  // or the dash that says why it cannot — a silently blank cell is the bug this
+  // catches, and the reason the strip is worth checking column by column.
+  const coverage = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('table thead tr')];
+    const labels = [...(rows[0]?.children ?? [])].map((cell) =>
+      (cell.textContent || '').replace(/[\u25bc\u25b2]/g, '').trim(),
+    );
+    const strip = rows.find((row) => row.classList.contains('ar-filter-row'));
+    const bare = [...(strip?.children ?? [])]
+      // A select renders as a button, not a `select`, so ask for anything
+      // interactive; `[aria-hidden]` is the explained dash.
+      .map((cell, index) =>
+        cell.querySelector('input, select, button, [role="combobox"], [aria-hidden]')
+          ? null
+          : labels[index],
+      )
+      .filter((name) => name);
+    return { columns: labels.length, bare };
+  });
+  ok(
+    `${label} — every column accounted for`,
+    coverage.bare.length === 0,
+    coverage.bare.length ? `nothing under: ${coverage.bare.join(', ')}` : `${coverage.columns} columns`,
+  );
+
   page.off('response', onResponse);
 }
 

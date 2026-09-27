@@ -22,7 +22,14 @@ describe('PrescribingService.decide', () => {
   });
 
   const build = (
-    over: { request?: any; licences?: any[]; holds?: any[]; medicationCategories?: any[] } = {},
+    over: {
+      request?: any;
+      licences?: any[];
+      holds?: any[];
+      medicationCategories?: any[];
+      /** `null` removes the signature, for the test that signing refuses without one. */
+      signature?: string | null;
+    } = {},
   ) => {
     const request = over.request ?? {
       id: 'req-1',
@@ -48,6 +55,12 @@ describe('PrescribingService.decide', () => {
           findUnique: jest.fn().mockResolvedValue({
             id: 'prov-1',
             user: { firstName: 'Ndidi', lastName: 'Okafor' },
+            // A clinician who cannot sign is not the subject of these tests, so
+            // the fixture has a signature by default. `over.signature: null`
+            // takes it away for the test that checks signing is refused.
+            signatureImage:
+              over.signature === null ? null : (over.signature ?? 'phi.v1:fixture-signature'),
+            signatureName: over.signature === null ? null : 'Ndidi Okafor, MD',
             licenses:
               over.licences ??
               [{ licenseNumber: 'TX-23456', state: 'TX', status: 'ACTIVE', expiresAt: future }],
@@ -129,6 +142,45 @@ describe('PrescribingService.decide', () => {
         }),
       }),
     );
+  });
+
+  it('puts the clinician’s signature on the prescription, frozen as it was', async () => {
+    const { service, tx } = build();
+
+    await service.decide({
+      requestId: 'req-1',
+      providerId: 'prov-1',
+      actingUserId: 'user-1',
+      input: approve(),
+    });
+
+    // Copied straight across, still encrypted: it never needs to be readable
+    // between the profile and the prescription.
+    expect(tx.prescription.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          signatureSnapshot: 'phi.v1:fixture-signature',
+          signatureNameSnapshot: 'Ndidi Okafor, MD',
+        }),
+      }),
+    );
+  });
+
+  it('refuses to sign at all when the clinician has no signature on file', async () => {
+    const { service, tx } = build({ signature: null });
+
+    await expect(
+      service.decide({
+        requestId: 'req-1',
+        providerId: 'prov-1',
+        actingUserId: 'user-1',
+        input: approve(),
+      }),
+    ).rejects.toThrow(/signature/i);
+
+    // Refused before anything is written: a half-signed visit would be worse
+    // than one that never started.
+    expect(tx.prescription.create).not.toHaveBeenCalled();
   });
 
   it('refuses a provider the visit is not assigned to', async () => {

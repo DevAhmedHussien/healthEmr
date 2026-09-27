@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
+import { Role } from '@health-emr/types';
 import { ApiStandardErrors, ApiZodBody, ApiZodOk } from '@/shared/http/api-docs';
 import type { Request } from 'express';
 import type { AuthenticatedUser } from '@health-emr/types';
@@ -22,8 +23,11 @@ const authenticatedUser = z.object({
   email: z.string().email(),
   firstName: z.string(),
   lastName: z.string(),
-  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'PROVIDER', 'PHARMACY', 'PATIENT']),
+  // Taken from the shared Role rather than retyped, so a role added to the
+  // platform cannot go missing from the API's own description of itself.
+  role: z.enum(Object.values(Role) as [string, ...string[]]),
   tenantId: z.string().uuid().nullable(),
+  permissions: z.array(z.string()).optional(),
 });
 
 @ApiTags('auth')

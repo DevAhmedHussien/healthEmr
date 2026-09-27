@@ -37,7 +37,13 @@ export type ChartSection = (typeof ChartSection)[keyof typeof ChartSection];
 const ALL: ChartSection[] = Object.values(ChartSection);
 
 const POLICY: Record<Role, ChartSection[]> = {
-  // Platform owner. Sees everything, and every read is logged as break-the-glass.
+  // The proprietor. Identical to a super admin here on purpose: owning the
+  // platform confers authority over who may do what, not a wider view of any
+  // patient. Every read is still logged as break-the-glass.
+  [Role.OWNER]: ALL,
+
+  // The platform operator. Sees everything, and every read is logged as
+  // break-the-glass.
   [Role.SUPER_ADMIN]: ALL,
 
   // The treating clinician. Needs the whole picture to prescribe safely.

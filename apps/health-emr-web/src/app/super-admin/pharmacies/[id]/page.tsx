@@ -39,6 +39,7 @@ interface PharmacyProfile {
   slug: string;
   integrationType: string;
   ncpdpId: string | null;
+  statesServed: string[];
   contactEmail: string | null;
   contactPhone: string | null;
   dispensesCompounded: boolean;
@@ -285,6 +286,12 @@ export default async function PharmacyProfilePage({ params }: { params: Promise<
               {[
                 ['NCPDP', pharmacy.ncpdpId ?? '—'],
                 ['Phone', pharmacy.contactPhone ?? '—'],
+                [
+                  'Ships to',
+                  pharmacy.statesServed.length
+                    ? `${pharmacy.statesServed.length} states`
+                    : 'no stated restriction',
+                ],
                 ['Catalogue value', formatMoney(summary.totalCostOfGoodsCents)],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-3">
@@ -339,6 +346,13 @@ export default async function PharmacyProfilePage({ params }: { params: Promise<
                   type: 'phone',
                 },
                 { name: 'ncpdpId', label: 'NCPDP ID', value: pharmacy.ncpdpId },
+                {
+                  name: 'statesServed',
+                  label: 'States served',
+                  value: pharmacy.statesServed.join(','),
+                  type: 'states',
+                  hint: 'Where this pharmacy will ship. A patient outside these states will not be routed here — leave empty for no restriction.',
+                },
                 {
                   name: 'dispensesCompounded',
                   label: 'Dispenses compounded',

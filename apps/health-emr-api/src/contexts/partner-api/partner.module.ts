@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { TenancyModule } from '../tenancy/tenancy.module';
 import { PatientsModule } from '../patients/patients.module';
 import { PractitionersModule } from '../practitioners/practitioners.module';
+import { MessagingModule } from '../messaging/messaging.module';
 import { PartnerController } from './partner.controller';
 import { IntakeService } from './intake.service';
 import { VisitPhotosService } from './visit-photos.service';
 import { QuestionnaireService } from './questionnaire.service';
 import { ExternalVisitService } from './external-visit.service';
 import { ExternalFetchService } from './external-fetch.service';
+import { PartnerChatService } from './partner-chat.service';
 
 /**
  * Bounded context: the partner API.
@@ -17,7 +19,7 @@ import { ExternalFetchService } from './external-fetch.service';
  * along if this ever needs to scale separately from the rest.
  */
 @Module({
-  imports: [TenancyModule, PatientsModule, PractitionersModule],
+  imports: [TenancyModule, PatientsModule, PractitionersModule, MessagingModule],
   controllers: [PartnerController],
   providers: [
     IntakeService,
@@ -25,6 +27,7 @@ import { ExternalFetchService } from './external-fetch.service';
     QuestionnaireService,
     ExternalVisitService,
     ExternalFetchService,
+    PartnerChatService,
   ],
 })
 export class PartnerApiModule {}

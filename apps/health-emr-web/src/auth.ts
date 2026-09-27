@@ -15,9 +15,46 @@ const API = process.env.API_BASE_URL ?? 'http://localhost:4000';
  * happens in the `jwt` callback so an active user is never bounced to login
  * mid-task.
  */
+
+/**
+ * Cookie names, namespaced to this application.
+ *
+ * Auth.js defaults every app to `authjs.session-token`, and a cookie is scoped
+ * by host — the port is not part of its identity. So two Next.js apps on
+ * localhost are one cookie jar: signing into the other one overwrites this
+ * app's session, and because the two use different AUTH_SECRETs neither can
+ * read what it finds. The symptom is being thrown back to the login page at
+ * apparently random intervals, with `no matching decryption secret` in the
+ * server log — nothing to do with the session lifetime, which is why it looks
+ * like a timeout that is far too short.
+ *
+ * Naming them after this app keeps the two separate, and lets somebody stay
+ * signed into both at once.
+ */
+const secure = (process.env.AUTH_URL ?? '').startsWith('https://');
+const cookiePrefix = secure ? '__Secure-' : '';
+
+const cookies = {
+  sessionToken: {
+    name: `${cookiePrefix}healthemr.session-token`,
+    options: { httpOnly: true, sameSite: 'lax', path: '/', secure } as const,
+  },
+  callbackUrl: {
+    name: `${cookiePrefix}healthemr.callback-url`,
+    options: { httpOnly: true, sameSite: 'lax', path: '/', secure } as const,
+  },
+  csrfToken: {
+    // `__Host-` additionally pins the cookie to this exact host with no domain
+    // of its own, which is what it is for.
+    name: `${secure ? '__Host-' : ''}healthemr.csrf-token`,
+    options: { httpOnly: true, sameSite: 'lax', path: '/', secure } as const,
+  },
+};
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   session: { strategy: 'jwt', maxAge: 15 * 60 },
+  cookies,
   pages: { signIn: '/login' },
   providers: [
     Credentials({

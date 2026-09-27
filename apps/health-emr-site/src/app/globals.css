@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+
+/**
+ * The public site's palette and type scale.
+ *
+ * The product's console is dense on purpose — an operator scanning two hundred
+ * visits needs information per square inch. A marketing page has the opposite
+ * job: one idea per screen, held long enough to land. So the grounds here are
+ * near-white and true black rather than the app's blue-grey, the type scale
+ * runs much further at the top end, and the brand blue is spent sparingly —
+ * on the thing being clicked, and almost nothing else.
+ */
+:root {
+  --brand: #115faa;
+  --brand-hover: #1679d8;
+  --brand-on-dark: #5aa9f0;
+
+  /* Near-black rather than black for text: pure #000 on white vibrates at
+     large sizes and reads as harsher than it needs to. */
+  --ink: #1a1c1f;
+  --muted: #6b7076;
+  --faint: #94999f;
+
+  --paper: #ffffff;
+  --paper-tint: #f4f5f7;
+  --deep: #07090b;
+  --deep-tint: #14181c;
+
+  --line: #e3e5e8;
+  --line-soft: #eef0f2;
+  --line-dark: rgba(255, 255, 255, 0.12);
+
+  --success: #12855f;
+  --warning: #9a6212;
+
+  --radius: 0.5rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+}
+
+@theme inline {
+  --font-sans: var(--font-poppins), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/**
+ * Base resets live in `@layer base`, and that is not a stylistic choice.
+ *
+ * Tailwind v4 emits its utilities inside a cascade layer, and unlayered CSS
+ * beats any layer regardless of specificity. So a bare `p { margin: 0 }` here
+ * silently defeated every `mt-*` and `mx-auto` on every paragraph in the site —
+ * the class was in the markup, the rule was in the sheet, and the computed
+ * margin was zero. Declaring these as base puts them back underneath the
+ * utilities, where a reset belongs.
+ */
+@layer base {
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-poppins), system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: inherit;
+    font-weight: 600;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/**
+ * Display type.
+ *
+ * Tracking tightens as size grows — letter spacing that looks correct at 17px
+ * looks loose and amateur at 64px, which is the single clearest tell between a
+ * considered page and a scaled-up one.
+ */
+/**
+ * The steps between these sizes are what carries the hierarchy.
+ *
+ * The first pass set the hero at 5rem and section headings at 3.4 — close
+ * enough that every band competed with the top of the page and nothing felt
+ * primary. Pulling the section size well below the hero, and the tile titles
+ * well below that, is what makes a long page read as one document rather than
+ * as nine posters stacked up.
+ */
+.t-hero {
+  font-size: clamp(2.4rem, 5.4vw, 3.9rem);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+}
+
+.t-display {
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: -0.028em;
+}
+
+.t-title {
+  font-size: clamp(1.15rem, 1.5vw, 1.32rem);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+/* Smaller than the heading it follows, and clearly subordinate to it. */
+.t-lede {
+  font-size: clamp(1.02rem, 1.15vw, 1.18rem);
+  line-height: 1.55;
+  letter-spacing: -0.008em;
+  color: var(--muted);
+}
+
+.t-eyebrow {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--brand);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/** An inline "keep reading" link — small, blue, with a chevron that shifts. */
+.link-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--brand);
+  font-size: 1rem;
+}
+.link-more::after {
+  content: '›';
+  font-size: 1.15em;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+.link-more:hover::after {
+  transform: translateX(3px);
+}
+.on-dark .link-more {
+  color: var(--brand-on-dark);
+}
+
+.prose-block p {
+  max-width: 62ch;
+  color: var(--muted);
+}
+.prose-block p + p {
+  margin-top: 1.1rem;
+}

@@ -36,7 +36,7 @@ export const ADMIN_PRESCRIPTION_SORT = ['signedAt', 'status'] as const;
  */
 export const ADMIN_PATIENT_FILTERS = {
   mrn: { path: 'mrn', kind: 'text' },
-  lastName: { path: 'lastName', kind: 'text' },
+  lastName: { path: 'lastName', kind: 'name', paths: ['firstName', 'lastName'] },
   visits: { path: 'requests', kind: 'presence' },
   prescriptions: { path: 'prescriptions', kind: 'presence' },
   allergies: { path: 'allergies', kind: 'presence' },
@@ -49,14 +49,28 @@ export const ADMIN_PATIENT_FILTERS = {
 
 export const ADMIN_VISIT_FILTERS = {
   masterId: { path: 'externalMasterId', kind: 'text' },
-  patient: { path: 'patient.lastName', kind: 'text' },
-  category: { path: 'category.slug', kind: 'exact' },
+  patient: {
+    path: 'patient.lastName',
+    kind: 'name',
+    paths: ['patient.firstName', 'patient.lastName'],
+  },
+  // The column shows "Weight Loss" and the slug is `weightloss`, so an exact
+  // match on either alone fails for whatever the reader actually typed.
+  category: {
+    path: 'category.name',
+    kind: 'name',
+    paths: ['category.name', 'category.slug'],
+  },
   requestStatus: {
     path: 'status',
     kind: 'exact',
     values: ['RECEIVED', 'PENDING_ASSIGNMENT', 'ASSIGNED', 'IN_REVIEW', 'INFO_REQUESTED', 'APPROVED', 'DENIED', 'EXPIRED', 'CANCELLED'],
   },
-  provider: { path: 'assignedProvider.user.lastName', kind: 'text' },
+  provider: {
+    path: 'assignedProvider.user.lastName',
+    kind: 'name',
+    paths: ['assignedProvider.user.firstName', 'assignedProvider.user.lastName'],
+  },
   patientState: { path: 'submission.patientStateAtSubmission', kind: 'exact' },
   reason: { path: 'denialReason', kind: 'text' },
   shipment: { path: 'prescriptions[].orders[].status', kind: 'exact', values: ['QUEUED', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_FULFILMENT', 'SHIPPED', 'DELIVERED', 'REJECTED', 'CANCELLED'] },
@@ -68,9 +82,18 @@ export const ADMIN_VISIT_FILTERS = {
 
 export const ADMIN_PRESCRIPTION_FILTERS = {
   medication: { path: 'medication.name', kind: 'text' },
-  patient: { path: 'patient.lastName', kind: 'text' },
+  patient: {
+    path: 'patient.lastName',
+    kind: 'name',
+    paths: ['patient.firstName', 'patient.lastName'],
+  },
   prescriber: { path: 'providerNameSnapshot', kind: 'text' },
-  licence: { path: 'licenseNumberSnapshot', kind: 'text' },
+  // Rendered as `AZ-12345 (AZ)`, from two columns.
+  licence: {
+    path: 'licenseNumberSnapshot',
+    kind: 'name',
+    paths: ['licenseNumberSnapshot', 'licenseStateSnapshot'],
+  },
   masterId: { path: 'request.externalMasterId', kind: 'text' },
   shipment: { path: 'orders[].status', kind: 'exact', values: ['QUEUED', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_FULFILMENT', 'SHIPPED', 'DELIVERED', 'REJECTED', 'CANCELLED'] },
   tracking: { path: 'orders[].trackingNumber', kind: 'text' },

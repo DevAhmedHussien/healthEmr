@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrescribingController } from './prescribing.controller';
 import { PrescribingService } from './prescribing.service';
 import { EarningsService } from './earnings.service';
+import { PractitionersModule } from '../practitioners/practitioners.module';
 import { MessagingModule } from '@/contexts/messaging/messaging.module';
 
 /**
@@ -13,7 +14,7 @@ import { MessagingModule } from '@/contexts/messaging/messaging.module';
 @Module({
   // A clinician asks the patient a question in the conversation they already
   // have, rather than this context growing a messaging system of its own.
-  imports: [MessagingModule],
+  imports: [MessagingModule, PractitionersModule],
   controllers: [PrescribingController],
   providers: [PrescribingService, EarningsService],
   exports: [PrescribingService, EarningsService],

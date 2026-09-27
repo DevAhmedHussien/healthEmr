@@ -6,6 +6,7 @@ import type {
   PharmacyOrderTableQuery,
   PharmacyQueueQuery,
   ShipOrderInput,
+  TrackingUpdateInput,
 } from '@health-emr/types';
 import {
   buildOrderBy,
@@ -27,13 +28,28 @@ export const ORDER_SORT = ['createdAt', 'status', 'submittedAt'] as const;
  */
 export const ORDER_FILTERS = {
   medication: { path: 'prescription.medication.name', kind: 'text' },
-  patient: { path: 'prescription.patient.lastName', kind: 'text' },
+  patient: {
+    path: 'prescription.patient.lastName',
+    kind: 'name',
+    paths: ['prescription.patient.firstName', 'prescription.patient.lastName'],
+  },
   phone: { path: 'prescription.patient.phone', kind: 'text' },
   prescriber: { path: 'prescription.providerNameSnapshot', kind: 'text' },
   directions: { path: 'prescription.sig', kind: 'text' },
   orderId: { path: 'externalOrderId', kind: 'text' },
   tracking: { path: 'trackingNumber', kind: 'text' },
-  shipTo: { path: 'prescription.patient.city', kind: 'text' },
+  // One column, five address fields behind it.
+  shipTo: {
+    path: 'prescription.patient.city',
+    kind: 'name',
+    paths: [
+      'prescription.patient.addressLine1',
+      'prescription.patient.addressLine2',
+      'prescription.patient.city',
+      'prescription.patient.residenceState',
+      'prescription.patient.postalCode',
+    ],
+  },
   patientState: { path: 'prescription.patient.residenceState', kind: 'exact' },
   daysSupply: { path: 'prescription.daysSupply', kind: 'number' },
   dose: { path: 'prescription.dose', kind: 'text' },
@@ -342,6 +358,143 @@ export class FulfilmentService {
       });
 
       return updated;
+    });
+  }
+
+  /**
+   * Where the parcel got to, reported by the pharmacy.
+   *
+   * The pharmacy is the only party here who talks to the carrier, so this is
+   * where carrier truth enters the system. Until now "shipped" was the last
+   * thing anyone was told, which meant the commonest question a patient asks —
+   * where is it — had no answer on either side of the integration.
+   *
+   * Delivery is the one status that changes the order, because it ends it.
+   * The other three are reports about a parcel still in motion: they are worth
+   * relaying and worth recording, and they are not decisions.
+   */
+  async trackingUpdate(
+    pharmacyId: string,
+    orderId: string,
+    actorUserId: string,
+    input: TrackingUpdateInput,
+  ) {
+    return runWithoutTenantScope(async () => {
+      const order = await this.mustOwn(pharmacyId, orderId);
+
+      if (order.status === 'REJECTED' || order.status === 'CANCELLED') {
+        throw new BadRequestException(
+          `This order was ${order.status.toLowerCase()} — there is no parcel to track`,
+        );
+      }
+      if (!order.shippedAt) {
+        throw new BadRequestException('Record the shipment first, then its progress');
+      }
+
+      const occurredAt = input.occurredAt ? new Date(input.occurredAt) : new Date();
+      const delivered = input.status === 'PACKAGE_DELIVERED';
+
+      if (delivered && order.status !== 'DELIVERED') {
+        await this.prisma.raw.$transaction(async (tx) => {
+          await tx.pharmacyOrder.update({
+            where: { id: orderId },
+            data: { status: 'DELIVERED', deliveredAt: occurredAt },
+          });
+          await tx.prescription.update({
+            where: { id: order.prescriptionId },
+            data: { status: 'DELIVERED' },
+          });
+        });
+      }
+
+      await this.audit.record({
+        action: 'ORDER_STATUS_CHANGED',
+        entityType: 'PharmacyOrder',
+        entityId: orderId,
+        patientId: order.prescription.patientId,
+        tenantId: order.tenantId,
+        actorUserId,
+        before: { status: order.status },
+        after: {
+          trackingStatus: input.status,
+          ...(delivered ? { status: 'DELIVERED' } : {}),
+          ...(input.note ? { note: input.note } : {}),
+        },
+      });
+
+      await this.notifyPatientTracked(order, input, occurredAt);
+
+      this.events.publish(DomainEvent.PackageTracked, {
+        orderId,
+        status: input.status,
+        occurredAt: occurredAt.toISOString(),
+        trackerStatus: input.trackerStatus ?? null,
+        trackerId: input.trackerId ?? null,
+        trackingUrl: input.trackingUrl ?? null,
+      });
+
+      // Sent alongside, not instead: a client subscribed to the order lifecycle
+      // should not have to learn the tracking vocabulary to find out an order
+      // finished. This is the publisher that event had been waiting for.
+      if (delivered && order.status !== 'DELIVERED') {
+        this.events.publish(DomainEvent.OrderDelivered, {
+          orderId,
+          prescriptionId: order.prescriptionId,
+          patientId: order.prescription.patientId,
+          deliveredAt: occurredAt.toISOString(),
+        });
+      }
+
+      return { id: orderId, status: input.status, occurredAt: occurredAt.toISOString() };
+    });
+  }
+
+  /**
+   * The patient's tracking notice.
+   *
+   * In-app only, and only for the two statuses worth interrupting somebody for.
+   * A push for every carrier scan is how people turn notifications off, and the
+   * one that mattered — nobody was home, collect it or it goes back — is the one
+   * they would then miss.
+   */
+  private async notifyPatientTracked(
+    order: { prescription: { patientId: string }; tenantId: string },
+    input: TrackingUpdateInput,
+    occurredAt: Date,
+  ) {
+    const worthSaying: Partial<Record<TrackingUpdateInput['status'], { title: string; body: string }>> = {
+      PACKAGE_DELIVERED: {
+        title: 'Your medication has been delivered',
+        body: `It was delivered on ${occurredAt.toLocaleDateString('en-US')}.`,
+      },
+      PACKAGE_DELIVERY_FAILED: {
+        title: 'Your delivery could not be completed',
+        body: input.note?.trim() || 'The carrier could not deliver it. Check your tracking for what to do next.',
+      },
+    };
+
+    const say = worthSaying[input.status];
+    if (!say) return;
+
+    const patient = await this.prisma.raw.patient.findUnique({
+      where: { id: order.prescription.patientId },
+      select: { id: true, userId: true },
+    });
+    if (!patient?.userId) return;
+
+    await this.notifications.notify({
+      userId: patient.userId,
+      tenantId: order.tenantId,
+      patientId: patient.id,
+      kind: 'order.tracking',
+      title: say.title,
+      body: say.body,
+      safeTitle: 'You have a new update',
+      safeBody: 'There is an update on your order. Sign in to your portal to view the details.',
+      link: '/portal/prescriptions',
+      entityType: 'PharmacyOrder',
+      entityId: patient.id,
+      channels: ['IN_APP'],
     });
   }
 

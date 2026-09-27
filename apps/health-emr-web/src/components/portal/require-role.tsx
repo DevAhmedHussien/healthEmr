@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { ROLE_HOME_ROUTE, type Role } from '@health-emr/types';
+import { ROLE_HOME_ROUTE, roleSatisfies, type Role } from '@health-emr/types';
 import { PortalShell } from './portal-shell';
 
 /**
@@ -14,7 +14,12 @@ export async function RequireRole({ role, children }: { role: Role; children: Re
   const session = await auth();
 
   if (!session?.user) redirect('/login');
-  if (session.user.role !== role) redirect(ROLE_HOME_ROUTE[session.user.role]);
+  // Not a strict comparison: an owner is a super admin with more, so they are
+  // accepted where one is asked for. Written as `!==` this sent an owner to
+  // their own home page, which ran this same check and sent them again.
+  if (!roleSatisfies(session.user.role, role)) {
+    redirect(ROLE_HOME_ROUTE[session.user.role]);
+  }
 
   return (
     <PortalShell

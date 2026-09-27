@@ -5,6 +5,7 @@ import { Alert, Badge, Card, CardHeader, TableWrap, statusTone } from '@/compone
 import { formatDateTime } from '@/lib/format';
 import { ActionDialog } from '@/components/admin/action-dialog';
 import { EditPanel } from '@/components/admin/edit-panel';
+import { AssignClinician } from '@/components/admin/assign-clinician';
 
 interface Questionnaire {
   visitId: string;
@@ -105,6 +106,10 @@ export default async function QuestionnairePage({ params }: { params: Promise<{ 
             />
           ) : (
             <>
+              {/* Only while it has nobody. The sweep places what it can, so a
+                  visit still unassigned is one a person has to decide about. */}
+              {qa.provider ? null : <AssignClinician visitId={qa.visitId} />}
+
               {/* Pre-filled from the record. Editing a field whose current
                   value is not on screen is how a good address gets overwritten
                   with a blank one. */}

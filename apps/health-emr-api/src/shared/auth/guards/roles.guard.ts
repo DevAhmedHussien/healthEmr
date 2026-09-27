@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { AuthenticatedUser, Role } from '@health-emr/types';
+import { roleSatisfies } from '@health-emr/types';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
@@ -23,7 +24,10 @@ export class RolesGuard implements CanActivate {
     const user = context.switchToHttp().getRequest().user as AuthenticatedUser | undefined;
     if (!user) throw new ForbiddenException('Authentication required');
 
-    if (!required.includes(user.role)) {
+    // An owner is accepted wherever a super admin is, rather than being listed
+    // beside them at every decorator — the one that got missed would be found
+    // by a user rather than by a test.
+    if (!required.some((role) => roleSatisfies(user.role, role))) {
       throw new ForbiddenException('Your role cannot perform this action');
     }
     return true;

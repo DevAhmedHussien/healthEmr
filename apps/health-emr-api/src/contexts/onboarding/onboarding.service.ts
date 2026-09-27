@@ -38,7 +38,7 @@ import { columnFilterWhere, type ColumnFilterMap } from '@/shared/http/column-fi
  * already offers a state picker that asks it properly.
  */
 export const PROVIDER_APPLICATION_FILTERS = {
-  lastName: { path: 'lastName', kind: 'text' },
+  lastName: { path: 'lastName', kind: 'name', paths: ['firstName', 'lastName'] },
   email: { path: 'email', kind: 'text' },
   npi: { path: 'npi', kind: 'text' },
   states: { path: 'licenses[].state', kind: 'text' },
@@ -69,7 +69,7 @@ export class OnboardingService {
 
   /** Where an applicant goes to claim the account we just made for them. */
   private inviteLink(token: string) {
-    const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+    const base = process.env.AUTH_URL ?? 'http://localhost:3005';
     return `${base}/accept-invite?token=${token}`;
   }
 

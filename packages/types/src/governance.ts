@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { listQuerySchema } from './list-query';
+import { ALL_PERMISSIONS, type PlatformPermission } from './roles';
 
 /**
  * What the platform owner can read about its own operators, and what it may
@@ -221,3 +222,98 @@ export const pharmacyProductPatchSchema = pharmacyProductWriteSchema.partial().r
   { message: 'Nothing to update' },
 );
 export type PharmacyProductPatchInput = z.infer<typeof pharmacyProductPatchSchema>;
+
+/**
+ * A clinician's licence in one state.
+ *
+ * States are not a tag on a provider the way they are on a pharmacy: routing
+ * requires a licence that is ACTIVE and unexpired, so a state without a number
+ * and an expiry date is not something the system can act on. Collecting all
+ * three together is what stops a half-entered licence from silently failing to
+ * route.
+ */
+export const providerLicenceInputSchema = z
+  .object({
+    state: z.string().trim().length(2).toUpperCase(),
+    licenseNumber: z.string().trim().min(1).max(80),
+    issuedAt: z.string().datetime().nullable().optional(),
+    expiresAt: z.string().datetime(),
+  })
+  .strict();
+
+/** What Super Admin may change on an existing licence, including its standing. */
+export const providerLicenceUpdateSchema = providerLicenceInputSchema
+  .partial()
+  .extend({
+    status: z.enum(['PENDING', 'ACTIVE', 'EXPIRED', 'SUSPENDED', 'REVOKED']).optional(),
+    reason: z.string().trim().max(500).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).some((key) => key !== 'reason'), {
+    message: 'Nothing to update',
+  });
+
+export type ProviderLicenceInput = z.infer<typeof providerLicenceInputSchema>;
+export type ProviderLicenceUpdate = z.infer<typeof providerLicenceUpdateSchema>;
+
+// ── the owner's authority over super admins ────────────────────────────────
+
+/**
+ * Derived from the permission list, never retyped.
+ *
+ * Written out by hand this silently rejected every grant added afterwards: the
+ * console offered the tickbox, the owner ticked it, and the request came back
+ * 400 with the permission unchanged. A validator that has its own idea of what
+ * exists is worse than no validator.
+ */
+const permission = z.enum(
+  ALL_PERMISSIONS as unknown as [PlatformPermission, ...PlatformPermission[]],
+);
+
+/**
+ * A new super admin.
+ *
+ * Permissions are chosen at creation rather than defaulted, so the person
+ * adding an administrator has to decide what that administrator may do. An
+ * empty list is allowed and means read-only, which is a reasonable starting
+ * point for somebody new.
+ */
+export const createSuperAdminSchema = z
+  .object({
+    email: z.string().trim().min(1, 'Email is required').email('Enter a valid email'),
+    firstName: z.string().trim().min(1, 'First name is required').max(100),
+    lastName: z.string().trim().min(1, 'Last name is required').max(100),
+    permissions: z.array(permission).max(20).default([]),
+  })
+  .strict();
+
+export const updateSuperAdminSchema = z
+  .object({
+    firstName: z.string().trim().min(1).max(100).optional(),
+    lastName: z.string().trim().min(1).max(100).optional(),
+    permissions: z.array(permission).max(20).optional(),
+    reason: z.string().trim().max(500).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).some((key) => key !== 'reason'), {
+    message: 'Nothing to change',
+  });
+
+/** Suspending or restoring an administrator, which is not the same as deleting. */
+export const setSuperAdminActiveSchema = z
+  .object({ isActive: z.boolean(), reason: z.string().trim().max(500).optional() })
+  .strict();
+
+/**
+ * Removing one for good.
+ *
+ * The reason is required and long enough to be a sentence: this is the record
+ * of why somebody with access to every patient no longer has it, and "cleanup"
+ * answers nobody's question a year later.
+ */
+export const removeSuperAdminSchema = z
+  .object({ reason: z.string().trim().min(10, 'Say why, in a sentence').max(500) })
+  .strict();
+
+export type CreateSuperAdminInput = z.infer<typeof createSuperAdminSchema>;
+export type UpdateSuperAdminInput = z.infer<typeof updateSuperAdminSchema>;

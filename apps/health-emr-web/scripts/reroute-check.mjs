@@ -8,7 +8,7 @@
  */
 import { chromium } from 'playwright';
 
-const WEB = process.env.WEB_URL ?? 'http://localhost:3000';
+const WEB = process.env.WEB_URL ?? 'http://localhost:3005';
 const b = await chromium.launch({ channel: 'chrome' });
 const bad = [];
 

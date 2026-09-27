@@ -129,7 +129,7 @@ describe('external visit surface (e2e)', () => {
 
   const send = (masterId: string, medId = medEd.medId, pharmacy = 'first-choice') =>
     request(app.getHttpServer())
-      .post('/partner/v1/external/updateVisit')
+      .post(`/partner/v1/visits/${masterId}/outcome`)
       .set(auth())
       .send({
         patientPreference: [preference(medId)],
@@ -193,12 +193,11 @@ describe('external visit surface (e2e)', () => {
       ['null', null, 'must be a string'],
     ])('refuses %s, and names the field', async (_label, value, message) => {
       const response = await request(app.getHttpServer())
-        .post('/partner/v1/external/updateVisit')
+        .post('/partner/v1/visits/anything/outcome')
         .set(auth())
         .send({
           patientPreference: [{ ...preference(medEd.medId), name: value }],
           pharmacyId: 'first-choice',
-          masterId: 'anything',
           apiKey: key,
         })
         .expect(400);
@@ -212,12 +211,11 @@ describe('external visit surface (e2e)', () => {
       expect(name).toBeDefined();
 
       const response = await request(app.getHttpServer())
-        .post('/partner/v1/external/updateVisit')
+        .post('/partner/v1/visits/anything/outcome')
         .set(auth())
         .send({
           patientPreference: [withoutName],
           pharmacyId: 'first-choice',
-          masterId: 'anything',
           apiKey: key,
         })
         .expect(400);
@@ -227,9 +225,9 @@ describe('external visit surface (e2e)', () => {
 
     it('refuses an empty preference array', async () => {
       await request(app.getHttpServer())
-        .post('/partner/v1/external/updateVisit')
+        .post('/partner/v1/visits/x/outcome')
         .set(auth())
-        .send({ patientPreference: [], pharmacyId: 'first-choice', masterId: 'x', apiKey: key })
+        .send({ patientPreference: [], pharmacyId: 'first-choice', apiKey: key })
         .expect(400);
     });
   });
@@ -345,9 +343,9 @@ describe('external visit surface (e2e)', () => {
       const masterId = await makeVisit({ decided: true });
 
       const { body } = await request(app.getHttpServer())
-        .post('/partner/v1/external/cancelVisit')
+        .post(`/partner/v1/visits/${masterId}/cancel`)
         .set(auth())
-        .send({ masterId, apiKey: key, reason: 'Patient cancelled with us before it shipped.' })
+        .send({ apiKey: key, reason: 'Patient cancelled with us before it shipped.' })
         .expect(200);
 
       expect(body.status).toBe('VISIT_CANCELLED');
@@ -364,9 +362,9 @@ describe('external visit surface (e2e)', () => {
       const masterId = await makeVisit({ decided: true, shipped: true });
 
       const { body } = await request(app.getHttpServer())
-        .post('/partner/v1/external/cancelVisit')
+        .post(`/partner/v1/visits/${masterId}/cancel`)
         .set(auth())
-        .send({ masterId, apiKey: key, reason: 'Patient changed their mind after dispatch.' })
+        .send({ apiKey: key, reason: 'Patient changed their mind after dispatch.' })
         .expect(200);
 
       // The parcel is real and the record has to agree with it.
@@ -375,9 +373,9 @@ describe('external visit surface (e2e)', () => {
 
     it('requires a reason', async () => {
       await request(app.getHttpServer())
-        .post('/partner/v1/external/cancelVisit')
+        .post('/partner/v1/visits/x/cancel')
         .set(auth())
-        .send({ masterId: 'x', apiKey: key, reason: '' })
+        .send({ apiKey: key, reason: '' })
         .expect(400);
     });
   });
@@ -385,12 +383,11 @@ describe('external visit surface (e2e)', () => {
   describe('the key in the body must name the account in the header', () => {
     it('refuses a payload key that is not the bearer token', async () => {
       const { body } = await request(app.getHttpServer())
-        .post('/partner/v1/external/updateVisit')
+        .post('/partner/v1/visits/anything/outcome')
         .set(auth())
         .send({
           patientPreference: [preference(medEd.medId)],
           pharmacyId: 'first-choice',
-          masterId: 'anything',
           apiKey: 'hemr_a_completely_different_key',
         })
         .expect(200);
@@ -405,7 +402,7 @@ describe('external visit surface (e2e)', () => {
       const masterId = await makeVisit({ decided: true });
 
       const { body } = await request(app.getHttpServer())
-        .get(`/partner/v1/visit/externalFetch/${masterId}`)
+        .get(`/partner/v1/visits/${masterId}`)
         .set(auth())
         .expect(200);
 
@@ -427,7 +424,7 @@ describe('external visit surface (e2e)', () => {
       const masterId = await makeVisit({ decided: false });
 
       const { body } = await request(app.getHttpServer())
-        .get(`/partner/v1/visit/externalFetch/${masterId}`)
+        .get(`/partner/v1/visits/${masterId}`)
         .set(auth())
         .expect(200);
 
@@ -437,7 +434,7 @@ describe('external visit surface (e2e)', () => {
 
     it('answers 200 with an error body for an unknown visit', async () => {
       const { body } = await request(app.getHttpServer())
-        .get('/partner/v1/visit/externalFetch/nope')
+        .get('/partner/v1/visits/nope')
         .set(auth())
         .expect(200);
 
@@ -451,7 +448,7 @@ describe('external visit surface (e2e)', () => {
       });
 
       const { body } = await request(app.getHttpServer())
-        .get(`/partner/v1/patient/externalFetch/${patient.phone}`)
+        .get(`/partner/v1/patients/by-phone/${patient.phone}`)
         .set(auth())
         .expect(200);
 
@@ -463,7 +460,7 @@ describe('external visit surface (e2e)', () => {
 
     it('refuses a phone number that is not ten digits', async () => {
       const { body } = await request(app.getHttpServer())
-        .get('/partner/v1/patient/externalFetch/512555')
+        .get('/partner/v1/patients/by-phone/512555')
         .set(auth())
         .expect(200);
 
@@ -472,7 +469,7 @@ describe('external visit surface (e2e)', () => {
 
     it('is not reachable without a key', async () => {
       await request(app.getHttpServer())
-        .get('/partner/v1/patient/externalFetch/5125550142')
+        .get('/partner/v1/patients/by-phone/5125550142')
         .expect(401);
     });
   });

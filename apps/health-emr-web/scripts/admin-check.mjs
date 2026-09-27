@@ -10,7 +10,7 @@
  */
 import { chromium } from 'playwright';
 
-const WEB = 'http://localhost:3000';
+const WEB = 'http://localhost:3005';
 const EMAIL = process.env.ADMIN_EMAIL ?? 'admin@joeymed.test';
 const PASSWORD = process.env.ADMIN_PASSWORD ?? 'Admin!2026';
 
