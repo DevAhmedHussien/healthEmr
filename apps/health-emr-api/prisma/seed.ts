@@ -343,7 +343,22 @@ async function main(): Promise<void> {
     create: {
       email: 'super@healthemr.test',
       passwordHash: await hash('Super!2026'),
-      role: 'SUPER_ADMIN',
+      /**
+       * OWNER, not SUPER_ADMIN.
+       *
+       * The owner console is matched on the role exactly — a super admin must
+       * not stand in for an owner, or the division of authority would be one
+       * request deep. Seeding this account as a super admin therefore left a
+       * fresh install with nobody who could grant anything, including to
+       * themselves: permissions empty, /v1/owner/* unreachable, and no way to
+       * bootstrap the authority model from inside the product.
+       *
+       * It looked correct on any database that had been running a while,
+       * because a migration promoted the existing row. A migration cannot
+       * promote a row that does not exist yet, so only clean installs were
+       * broken — which is to say, every new machine.
+       */
+      role: 'OWNER',
       firstName: 'Platform',
       lastName: 'Owner',
       isEmailVerified: true,
@@ -352,7 +367,7 @@ async function main(): Promise<void> {
   });
 
   console.warn('\nSeed complete.\n');
-  console.warn('  super@healthemr.test        Super!2026      (SUPER_ADMIN)');
+  console.warn('  super@healthemr.test        Super!2026      (OWNER)');
   console.warn('  admin@joeymed.test          Admin!2026      (ADMIN · joeyMed)');
   console.warn('  admin@acmehealth.test       Admin!2026      (ADMIN · acmeHealth)');
   console.warn('  dr.reyes@healthemr.test     Provider!2026   (PROVIDER · CA NV AZ)');

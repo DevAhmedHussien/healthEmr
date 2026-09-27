@@ -9,21 +9,30 @@ their medication name travelling by SMS.
 
 ```bash
 docker compose up -d postgres
-cp .env.example .env            # then fill in the secrets
+
+# Each app reads its own file. A copy at the repo root is read by neither.
+cp apps/health-emr-api/.env.example apps/health-emr-api/.env
+cp apps/health-emr-web/.env.example apps/health-emr-web/.env
+
 npm install
+npm run db:generate             # build the Prisma client before anything uses it
 npm run db:migrate
 npm run db:seed                 # prints logins and tenant API keys
 
-npm run dev                     # api on :4000, web on :3000
+npm run dev                     # api on :4000, web on :3005, site on :3006
 ```
 
-Swagger: http://localhost:4000/docs · App: http://localhost:3000
+Swagger: http://localhost:4000/docs · Console: http://localhost:3005
+
+The defaults work as they stand. Fill in `JWT_*` and `PHI_ENCRYPTION_KEY`
+before anything a real patient could reach — the API starts without the
+encryption key and warns that it is storing PHI in plaintext.
 
 ## Seeded logins
 
 | Role | Email | Password |
 |---|---|---|
-| Super Admin | `super@healthemr.test` | `Super!2026` |
+| Owner | `super@healthemr.test` | `Super!2026` |
 | Admin (joeyMed) | `admin@joeymed.test` | `Admin!2026` |
 | Admin (acmeHealth) | `admin@acmehealth.test` | `Admin!2026` |
 | Provider (CA/NV/AZ) | `dr.reyes@healthemr.test` | `Provider!2026` |
