@@ -1,5 +1,10 @@
+import { JwtService } from '@nestjs/jwt';
+import { APP_CONFIG } from '@/shared/config/config.module';
+import type { AppConfig } from '@/shared/config/configuration';
+import { CHAT_TICKET_TYPE } from './chat-ticket';
 import {
   BadRequestException,
+  Inject,
   ForbiddenException,
   Injectable,
   Logger,
@@ -30,6 +35,8 @@ export class MessagingService {
     private readonly events: EventBus,
     private readonly notifications: NotificationsService,
     private readonly storage: ObjectStorageService,
+    private readonly jwt: JwtService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   /**
@@ -62,6 +69,25 @@ export class MessagingService {
       throw new ForbiddenException('You are not part of this conversation');
     }
     return participant;
+  }
+
+  /**
+   * A ticket that opens the message socket and nothing else.
+   *
+   * Sixty seconds, and it carries no role or tenant — the gateway uses it only
+   * to learn who is connecting, then joins them to the threads they are already
+   * a participant of. Every authorisation decision still happens against the
+   * membership table, exactly as it does for an HTTP read.
+   */
+  async socketTicket(user: AuthenticatedUser): Promise<{ ticket: string; expiresInSeconds: number }> {
+    const expiresInSeconds = 60;
+
+    const ticket = await this.jwt.signAsync(
+      { sub: user.id, typ: CHAT_TICKET_TYPE },
+      { secret: this.config.jwt.accessSecret, expiresIn: expiresInSeconds },
+    );
+
+    return { ticket, expiresInSeconds };
   }
 
   async listThreads(user: AuthenticatedUser, query: ThreadListQuery) {
@@ -658,7 +684,7 @@ export class MessagingService {
     );
     if (!thread) return;
 
-    await runWithoutTenantScope(() =>
+    const [message] = await runWithoutTenantScope(() =>
       this.prisma.raw.$transaction([
         this.prisma.raw.chatMessage.create({
           data: {
@@ -676,6 +702,28 @@ export class MessagingService {
         }),
       ]),
     );
+
+    /**
+     * Announced like any other message, because that is what it is.
+     *
+     * This method existed as "the platform posting into a thread" while the
+     * ordinary send was "a user sending a message" — the same act to everyone
+     * outside this service, and two different code paths inside it. Only the
+     * second published, so a clinician's "request more information" was
+     * written to the database, shown to the patient, and never reached the
+     * client's CRM or the patient's open browser. Nothing failed; nothing was
+     * ever attempted.
+     *
+     * Published after the write and outside the transaction, matching `send`:
+     * a subscriber that reads the message back must find it there.
+     */
+    this.events.publish(DomainEvent.ChatMessageSent, {
+      threadId,
+      messageId: message.id,
+      authorRole: author.authorRole,
+      content,
+      sentAt,
+    });
 
     const patient = thread.participants.find((row) => row.role === Role.PATIENT);
     if (!patient) return;
@@ -859,7 +907,11 @@ export class MessagingService {
             },
           },
         },
-        select: { id: true, kind: true },
+        select: {
+          id: true,
+          kind: true,
+          messages: { select: { id: true, sentAt: true }, take: 1 },
+        },
       });
 
       await this.audit.record({
@@ -870,6 +922,45 @@ export class MessagingService {
         tenantId,
         after: { kind: input.kind, participants: users.length },
       });
+
+      // The opening message is a message, and everything that happens to one
+      // has to happen to it: delivered over the socket to whoever is looking,
+      // notified to whoever is not, and announced to a client business whose
+      // patient it was written to.
+      //
+      // It used to be written inside the thread's own create and nothing else
+      // — so the first thing a clinician ever said to a patient reached the
+      // database and stopped there. That is the "send me a clearer photograph"
+      // message, which is the one that most needed to arrive.
+      const opening = thread.messages[0];
+      if (opening) {
+        this.events.publish(DomainEvent.ChatMessageSent, {
+          threadId: thread.id,
+          messageId: opening.id,
+          author: `${user.firstName} ${user.lastName}`,
+          authorRole: user.role,
+          content: input.message,
+          sentAt: opening.sentAt,
+        });
+
+        for (const participant of users) {
+          if (participant.id === user.id) continue;
+          await this.notifications.notify({
+            userId: participant.id,
+            tenantId,
+            patientId: input.patientId ?? null,
+            kind: 'chat.message',
+            title: `New message from ${user.firstName} ${user.lastName}`,
+            body: input.message,
+            safeTitle: 'You have a new message',
+            safeBody: 'You have a new secure message. Sign in to read it.',
+            link: `/chat/${thread.id}`,
+            entityType: 'ChatThread',
+            entityId: thread.id,
+            channels: ['IN_APP'],
+          });
+        }
+      }
 
       return { threadId: thread.id, kind: thread.kind, participants: users.length };
     });

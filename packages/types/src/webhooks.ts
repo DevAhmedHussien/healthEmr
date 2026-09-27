@@ -36,6 +36,17 @@ export const WEBHOOK_EVENTS = [
   /** The clinician wrote to the patient. Content included so a CRM can show the thread. */
   'DOCTOR_CHAT',
   /**
+   * Where the parcel is, as the carrier reports it.
+   *
+   * Separate from PHARMACY_ORDER_SHIPPED, which says the pharmacy handed it
+   * over. These say what happened to it afterwards, and a support desk fielding
+   * "where is my package" needs the second kind, not the first.
+   */
+  'PACKAGE_IN_TRANSIT',
+  'PACKAGE_OUT_FOR_DELIVERY',
+  'PACKAGE_DELIVERED',
+  'PACKAGE_DELIVERY_FAILED',
+  /**
    * The visit reached us and is queued for a clinician.
    *
    * Not in the incumbent's list. Added because a CRM that only hears about
@@ -43,6 +54,18 @@ export const WEBHOOK_EVENTS = [
    * the first question a salesperson is asked.
    */
   'CONSULT_RECEIVED',
+  /**
+   * The clinician has asked the patient something and is waiting on the answer.
+   *
+   * A real state the visit sits in, sometimes for days, and the only one that
+   * the patient rather than the platform can end. Without it a client's console
+   * shows "in review" while the visit is in fact parked, and their support desk
+   * chases us about a delay the patient could clear in a sentence.
+   *
+   * The question itself arrives separately as DOCTOR_CHAT. This carries no
+   * clinical content — it is the status, not the conversation.
+   */
+  'CONSULT_INFO_REQUESTED',
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
@@ -57,6 +80,11 @@ export const WEBHOOK_EVENT_LABEL: Record<WebhookEvent, string> = {
   PHARMACY_ORDER_DELIVERED: 'Delivered',
   NAME_UPDATE: 'Patient name corrected',
   DOCTOR_CHAT: 'Clinician messaged the patient',
+  PACKAGE_IN_TRANSIT: 'Parcel in transit',
+  PACKAGE_OUT_FOR_DELIVERY: 'Parcel out for delivery',
+  PACKAGE_DELIVERED: 'Parcel delivered',
+  PACKAGE_DELIVERY_FAILED: 'Parcel could not be delivered',
+  CONSULT_INFO_REQUESTED: 'Clinician asked the patient a question',
 };
 
 /**
@@ -72,6 +100,14 @@ const base = z.object({
 
 export const webhookBodySchema = z.discriminatedUnion('event', [
   base.extend({ event: z.literal('CONSULT_RECEIVED') }),
+
+  /**
+   * No fields of its own. The question the clinician asked travels as
+   * DOCTOR_CHAT; this says only that the visit is now waiting on the patient,
+   * and a status that carried clinical detail would be a disclosure nobody
+   * asked for when they enabled it.
+   */
+  base.extend({ event: z.literal('CONSULT_INFO_REQUESTED') }),
 
   base.extend({
     event: z.literal('CONSULT_CONCLUDED'),
@@ -134,6 +170,33 @@ export const webhookBodySchema = z.discriminatedUnion('event', [
   base.extend({
     event: z.literal('DOCTOR_CHAT'),
     content: z.string(),
+  }),
+
+  /**
+   * Carrier tracking.
+   *
+   * Four fields of `info` are nullable and usually null, and that is deliberate
+   * rather than unfinished: `trackerStatus`, `trackerId` and `trackingUrl` come
+   * from a carrier-tracking provider this platform is not connected to. Sending
+   * null says "we do not know"; inventing a tracking URL would send a support
+   * desk to a page that does not exist.
+   */
+  base.extend({
+    event: z.enum([
+      'PACKAGE_IN_TRANSIT',
+      'PACKAGE_OUT_FOR_DELIVERY',
+      'PACKAGE_DELIVERED',
+      'PACKAGE_DELIVERY_FAILED',
+    ]),
+    orderId: z.string(),
+    info: z.object({
+      trackerStatus: z.string().nullable(),
+      trackerId: z.string().nullable(),
+      trackingUrl: z.string().nullable(),
+      tracking: z.string().nullable(),
+      carrier: z.string().nullable(),
+      deliveredDate: z.string().nullable(),
+    }),
   }),
 ]);
 

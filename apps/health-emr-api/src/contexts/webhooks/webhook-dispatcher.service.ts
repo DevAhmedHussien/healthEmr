@@ -316,7 +316,187 @@ export class WebhookDispatcher {
     }
   }
 
+  /**
+   * The clinician wrote to the patient.
+   *
+   * Only the clinician's own words go out. A patient's reply is theirs and the
+   * client already has it — they collected it. The platform's own status notes
+   * ("your order has shipped") would arrive as a second copy of an event the
+   * client was already sent, read by a support desk as the doctor saying it.
+   *
+   * The content travels, because a CRM showing half a conversation is worse
+   * than showing none. That is a disclosure decision, which is why only an
+   * owner can point a webhook at an endpoint in the first place.
+   */
+  @OnEvent(DomainEvent.ChatMessageSent)
+  async onClinicianMessaged(
+    envelope: DomainEventEnvelope<{
+      threadId: string;
+      authorRole: string;
+      content: string;
+      sentAt: Date | string;
+    }>,
+  ) {
+    if (envelope.payload.authorRole !== 'PROVIDER') return;
+
+    const visit = await this.visitForThread(envelope.payload.threadId);
+    if (!visit) return;
+
+    await this.send(visit, {
+      masterId: visit.externalMasterId,
+      event: 'DOCTOR_CHAT',
+      occurredAt: new Date(envelope.payload.sentAt).toISOString(),
+      content: envelope.payload.content,
+    });
+  }
+
+  /**
+   * The clinician is waiting on the patient.
+   *
+   * Sent alongside the DOCTOR_CHAT carrying the question, and deliberately
+   * separate from it: one is the conversation, this is the state the visit is
+   * now in. A client that only heard the message would show a chat bubble
+   * against a visit still reading "in review", and their support desk would
+   * chase us about a delay only the patient can end.
+   *
+   * Carries no clinical content. The question travels in the chat event, which
+   * is already a disclosure decision an owner made when pointing a webhook at
+   * an endpoint; the status needs no such argument and should not reopen it.
+   */
+  @OnEvent(DomainEvent.VisitInfoRequested)
+  async onInfoRequested(
+    envelope: DomainEventEnvelope<{ requestId: string; masterId: string }>,
+  ) {
+    const visit = await this.visitOf(envelope.payload.requestId);
+    if (!visit) return;
+
+    await this.send(visit, {
+      masterId: visit.externalMasterId,
+      event: 'CONSULT_INFO_REQUESTED',
+      occurredAt: new Date(envelope.occurredAt ?? Date.now()).toISOString(),
+    });
+  }
+
+  /**
+   * The visit was withdrawn here.
+   *
+   * A client whose CRM still shows "in review" for a visit that no longer
+   * exists will chase a patient about it, so this is sent even though the
+   * client is usually the one who asked for the cancellation.
+   */
+  @OnEvent(DomainEvent.VisitVoided)
+  async onVisitVoided(envelope: DomainEventEnvelope<{ requestId: string; reason?: string }>) {
+    const visit = await this.visitOf(envelope.payload.requestId);
+    if (!visit) return;
+
+    await this.send(visit, {
+      masterId: visit.externalMasterId,
+      event: 'CONSULT_CANCELED',
+      occurredAt: envelope.occurredAt ?? new Date().toISOString(),
+      ...(envelope.payload.reason ? { reason: envelope.payload.reason } : {}),
+    });
+  }
+
+  /**
+   * A patient's name was corrected here.
+   *
+   * Sent per visit rather than once per patient: the client joins on masterId,
+   * and a correction that arrives against no visit is one their CRM cannot
+   * place. A patient with three visits produces three events, which is the
+   * shape the client can actually act on.
+   */
+  @OnEvent(DomainEvent.PatientNameChanged)
+  async onPatientNameChanged(
+    envelope: DomainEventEnvelope<{ patientId: string; firstName: string; lastName: string }>,
+  ) {
+    const visits = await runWithoutTenantScope(() =>
+      this.prisma.raw.prescriptionRequest.findMany({
+        where: { patientId: envelope.payload.patientId, voidedAt: null },
+        select: { id: true, tenantId: true, externalMasterId: true },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+    );
+
+    for (const visit of visits) {
+      await this.send(visit, {
+        masterId: visit.externalMasterId,
+        event: 'NAME_UPDATE',
+        occurredAt: envelope.occurredAt ?? new Date().toISOString(),
+        firstName: envelope.payload.firstName,
+        lastName: envelope.payload.lastName,
+      });
+    }
+  }
+
+  /**
+   * Where the parcel got to, as the carrier reports it.
+   *
+   * Distinct from PHARMACY_ORDER_SHIPPED, which says the pharmacy handed it
+   * over. "Where is my package" is answered by these, not by that.
+   */
+  @OnEvent(DomainEvent.PackageTracked)
+  async onPackageTracked(
+    envelope: DomainEventEnvelope<{
+      orderId: string;
+      status: 'PACKAGE_IN_TRANSIT' | 'PACKAGE_OUT_FOR_DELIVERY' | 'PACKAGE_DELIVERED' | 'PACKAGE_DELIVERY_FAILED';
+      trackerStatus?: string | null;
+      trackerId?: string | null;
+      trackingUrl?: string | null;
+    }>,
+  ) {
+    const order = await this.orderOf(envelope.payload.orderId);
+    if (!order) return;
+
+    await this.send(order.visit, {
+      masterId: order.visit.externalMasterId,
+      event: envelope.payload.status,
+      occurredAt: envelope.occurredAt ?? new Date().toISOString(),
+      orderId: order.externalOrderId ?? order.id,
+      info: {
+        // Held here, so always answerable.
+        tracking: order.trackingNumber ?? null,
+        carrier: order.carrier ?? null,
+        deliveredDate: order.deliveredAt ? order.deliveredAt.toISOString() : null,
+        // Supplied by whoever reported the update, if they know. Null means we
+        // do not know, which is the honest answer until a carrier-tracking
+        // provider is connected.
+        trackerStatus: envelope.payload.trackerStatus ?? null,
+        trackerId: envelope.payload.trackerId ?? null,
+        trackingUrl: envelope.payload.trackingUrl ?? null,
+      },
+    });
+  }
+
   // ── lookups ───────────────────────────────────────────────────────────
+
+  /**
+   * The visit a conversation belongs to.
+   *
+   * A patient–clinician thread is keyed on the patient, not on a visit: one
+   * conversation carries on across however many visits they have. The client
+   * joins on masterId, so the message is attributed to their most recent visit
+   * with that client — which is the one their CRM has open, and the one the
+   * conversation is almost always about.
+   */
+  private async visitForThread(threadId: string) {
+    const thread = await runWithoutTenantScope(() =>
+      this.prisma.raw.chatThread.findUnique({
+        where: { id: threadId },
+        select: { tenantId: true, patientId: true },
+      }),
+    );
+    if (!thread?.patientId || !thread.tenantId) return null;
+
+    return runWithoutTenantScope(() =>
+      this.prisma.raw.prescriptionRequest.findFirst({
+        where: { patientId: thread.patientId!, tenantId: thread.tenantId!, voidedAt: null },
+        select: { id: true, tenantId: true, externalMasterId: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+  }
+
 
   private visitOf(requestId: string) {
     return runWithoutTenantScope(() =>
@@ -341,6 +521,12 @@ export class WebhookDispatcher {
         where: { id: orderId },
         select: {
           id: true,
+          // Carried so a tracking event can answer where the parcel is without
+          // a second query per delivery.
+          externalOrderId: true,
+          trackingNumber: true,
+          carrier: true,
+          deliveredAt: true,
           prescription: {
             select: {
               request: {
@@ -353,7 +539,14 @@ export class WebhookDispatcher {
     );
 
     if (!order?.prescription.request) return null;
-    return { id: order.id, visit: order.prescription.request };
+    return {
+      id: order.id,
+      externalOrderId: order.externalOrderId,
+      trackingNumber: order.trackingNumber,
+      carrier: order.carrier,
+      deliveredAt: order.deliveredAt,
+      visit: order.prescription.request,
+    };
   }
 }
 
